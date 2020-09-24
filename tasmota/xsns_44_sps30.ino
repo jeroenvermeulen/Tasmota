@@ -93,8 +93,13 @@ uint8_t twi_buff[64];
   dlen/=2;
   dlen*=3;
 
-  twi_readFrom(SPS30_ADDR,twi_buff,dlen,1);
 
+#ifdef ESP8266
+  twi_readFrom(SPS30_ADDR,twi_buff,dlen,1);
+#else
+  uint32_t readCount;
+  Wire.readTransmission(SPS30_ADDR, twi_buff, dlen, 1, &readCount);
+#endif
   uint8_t bind=0;
   while (bind<dlen) {
     tmp[0] = twi_buff[bind++];

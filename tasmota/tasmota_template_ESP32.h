@@ -111,7 +111,7 @@ enum UserSelectablePins {
   GPIO_CC1101_GDO0, GPIO_CC1101_GDO2,  // CC1101 Serial interface
   GPIO_HRXL_RX,                        // Data from MaxBotix HRXL sonar range sensor
   GPIO_ELECTRIQ_MOODL_TX,              // ElectriQ iQ-wifiMOODL Serial TX
-  GPIO_AS3935,                         // Franklin Lightning Sensor
+  GPIO_AS3935,
   GPIO_ADC_INPUT,                      // Analog input
   GPIO_ADC_TEMP,                       // Analog Thermistor
   GPIO_ADC_LIGHT,                      // Analog Light sensor
@@ -137,6 +137,7 @@ enum UserSelectablePins {
   GPIO_IEM3000_TX, GPIO_IEM3000_RX,    // IEM3000 Serial interface
   GPIO_ZIGBEE_RST,                     // Zigbee reset
   GPIO_DYP_RX,
+  PIO_CC1101_CS,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -236,7 +237,8 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_LMT01_PULSE "|"
   D_SENSOR_IEM3000_TX "|" D_SENSOR_IEM3000_RX "|"
   D_SENSOR_ZIGBEE_RST "|"
-  D_SENSOR_DYP_RX
+  D_SENSOR_DYP_RX "|"
+  D_SENSOR_CC1101_CS
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -557,7 +559,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_DYP_RX),
 #endif
 #ifdef USE_AS3935
-  AGPIO(GPIO_AS3935),          // AS3935 IRQ Pin
+  AGPIO(GPIO_AS3935),
 #endif
 #ifdef USE_TELEINFO
   AGPIO(GPIO_TELEINFO_RX),
@@ -592,6 +594,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_ETH_PHY_MDC),
   AGPIO(GPIO_ETH_PHY_MDIO),  // Ethernet
 #endif
+#ifdef USE_MORITZ
+  AGPIO(GPIO_CC1101_CS),
+#endif
+
 };
 
 //********************************************************************************************
