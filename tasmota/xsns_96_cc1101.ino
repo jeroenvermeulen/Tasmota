@@ -62,6 +62,7 @@ void CC1101_433_Detect(void) {
 
   pinMode(cc1101_433.cs, OUTPUT);
   digitalWrite(cc1101_433.cs, 1);
+  AddLog_P2(LOG_LEVEL_INFO, PSTR("CC1101: cs=%d"), cc1101_433.cs);
 
 #ifndef ESP32
   SPI.begin();
@@ -76,6 +77,7 @@ void CC1101_433_Detect(void) {
   cc1101_433.ready = 1;
 
   cc1101_433.last_task = millis();
+  
 
 //  GPIO_CC1101_GDO2 17
 
