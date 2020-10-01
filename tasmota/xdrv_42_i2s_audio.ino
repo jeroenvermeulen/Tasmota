@@ -374,25 +374,27 @@ void Play_mp3(const char *path) {
   }
 
   file = new AudioFileSourceFS(*fsp,path);
-  id3 = new AudioFileSourceID3(file);
+  if (file->isOpen()) {
+    id3 = new AudioFileSourceID3(file);
 
-  if (mp3ram) {
-    mp3 = new AudioGeneratorMP3(mp3ram, preallocateCodecSize);
-  } else {
-    mp3 = new AudioGeneratorMP3();
-  }
-  mp3->begin(id3, out);
+    if (mp3ram) {
+      mp3 = new AudioGeneratorMP3(mp3ram, preallocateCodecSize);
+    } else {
+      mp3 = new AudioGeneratorMP3();
+    }
+    mp3->begin(id3, out);
 
-  if (I2S_Task) {
-    xTaskCreatePinnedToCore(mp3_task, "MP3", 8192, NULL, 3, &mp3_task_h, 1);
-  } else {
-    while (mp3->isRunning()) {
-      if (!mp3->loop()) {
-        mp3->stop();
-        mp3_delete();
-        break;
+    if (I2S_Task) {
+      xTaskCreatePinnedToCore(mp3_task, "MP3", 8192, NULL, 3, &mp3_task_h, 1);
+    } else {
+      while (mp3->isRunning()) {
+        if (!mp3->loop()) {
+          mp3->stop();
+          mp3_delete();
+          break;
+        }
+        OsWatchLoop();
       }
-      OsWatchLoop();
     }
   }
 
