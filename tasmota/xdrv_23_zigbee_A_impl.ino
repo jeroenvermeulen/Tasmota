@@ -1357,6 +1357,7 @@ void ZigbeeShow(bool json)
       ".ztd td:not(:first-child){width:20px;font-size:70%%}"
       ".ztd td:last-child{width:45px}"
       ".ztd .bt{margin-right:10px;}" // Margin right should be half of the not-first width
+      ".htr{line-height:20px}"
       // Lighting
       ".bx{height:14px;width:14px;display:inline-block;border:1px solid currentColor;background-color:var(--cl,#fff)}"
       // Signal Strength Indicator
@@ -1406,7 +1407,7 @@ void ZigbeeShow(bool json)
       }
 
       WSContentSend_PD(PSTR(
-        "<tr class='ztd'>"
+        "<tr class='ztd htr'>"
           "<td><b>%s</b></td>" // name
           "<td>%s</td>" // sbatt (Battery Indicator)
           "<td><div title='" D_LQI " %s' class='ssi'>" // slqi
@@ -1431,15 +1432,25 @@ void ZigbeeShow(bool json)
 
       // Sensors
       bool temperature_ok = device.validTemperature();
+      bool tempareture_target_ok = device.validTemperatureTarget();
+      bool th_setpoint_ok = device.validThSetpoint();
       bool humidity_ok    = device.validHumidity();
       bool pressure_ok    = device.validPressure();
 
-      if (temperature_ok || humidity_ok || pressure_ok) {
-        WSContentSend_P(PSTR("<tr><td colspan=\"4\">&#9478;"));
+      if (temperature_ok || tempareture_target_ok || th_setpoint_ok || humidity_ok || pressure_ok) {
+        WSContentSend_P(PSTR("<tr class='htr'><td colspan=\"4\">&#9478;"));
         if (temperature_ok) {
           char buf[12];
           dtostrf(device.temperature / 10.0f, 3, 1, buf);
           WSContentSend_PD(PSTR(" &#x2600;&#xFE0F; %s°C"), buf);
+        }
+        if (tempareture_target_ok) {
+          char buf[12];
+          dtostrf(device.temperature_target / 10.0f, 3, 1, buf);
+          WSContentSend_PD(PSTR(" &#127919; %s°C"), buf);
+        }
+        if (th_setpoint_ok) {
+          WSContentSend_PD(PSTR(" &#9881;&#65039; %d%%"), device.th_setpoint);
         }
         if (humidity_ok) {
           WSContentSend_P(PSTR(" &#x1F4A7; %d%%"), device.humidity);
@@ -1456,7 +1467,7 @@ void ZigbeeShow(bool json)
       if (power_ok) {
         uint8_t channels = device.getLightChannels();
         if (0xFF == channels) { channels = 5; }     // if number of channel is unknown, display all known attributes
-        WSContentSend_P(PSTR("<tr><td colspan=\"4\">&#9478; %s"), device.getPower() ? PSTR(D_ON) : PSTR(D_OFF));
+        WSContentSend_P(PSTR("<tr class='htr'><td colspan=\"4\">&#9478; %s"), device.getPower() ? PSTR(D_ON) : PSTR(D_OFF));
         if (device.validDimmer() && (channels >= 1)) {
           WSContentSend_P(PSTR(" &#128261; %d%%"), changeUIntScale(device.dimmer,0,254,0,100));
         }
