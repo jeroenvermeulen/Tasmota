@@ -54,6 +54,8 @@ AudioFileSourceID3 *id3;
 AudioGeneratorMP3 *decoder = NULL;
 void *mp3ram = NULL;
 
+#define I2SAUDIO_TASK_STACK_SIZE 8192
+
 
 #ifdef ESP8266
 const int preallocateBufferSize = 5*1024;
@@ -294,7 +296,7 @@ void Webradio(const char *url) {
     retryms = millis() + 2000;
   }
 
-  xTaskCreatePinnedToCore(mp3_task2, "MP3-2", 8192, NULL, 3, &mp3_task_h, 1);
+  xTaskCreatePinnedToCore(mp3_task2, "MP3-2", I2SAUDIO_TASK_STACK_SIZE, NULL, 3, &mp3_task_h, 1);
 }
 
 void mp3_task2(void *arg){
@@ -385,7 +387,7 @@ void Play_mp3(const char *path) {
     mp3->begin(id3, out);
 
     if (I2S_Task) {
-      xTaskCreatePinnedToCore(mp3_task, "MP3", 8192, NULL, 3, &mp3_task_h, 1);
+      xTaskCreatePinnedToCore(mp3_task, "MP3", I2SAUDIO_TASK_STACK_SIZE, NULL, 3, &mp3_task_h, 1);
     } else {
       while (mp3->isRunning()) {
         if (!mp3->loop()) {
