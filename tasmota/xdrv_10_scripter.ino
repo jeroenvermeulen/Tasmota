@@ -129,6 +129,10 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #endif
 #endif // USE_SCRIPT_COMPRESSION
 
+#ifndef STASK_PRIO
+#define STASK_PRIO 1
+#endif
+
 #ifdef USE_SCRIPT_TIMER
 #include <Ticker.h>
 Ticker Script_ticker1;
@@ -1862,8 +1866,12 @@ chknext:
           while (*lp==' ') lp++;
           float fvar2;
           lp = GetNumericArgument(lp, OPER_EQU, &fvar2, 0);
+          float prio = STASK_PRIO;
+          if (*lp!=')') {
+            lp = GetNumericArgument(lp, OPER_EQU, &prio, 0);
+          }
           lp++;
-          fvar = scripter_create_task(fvar, fvar1, fvar2);
+          fvar = scripter_create_task(fvar, fvar1, fvar2, prio);
           len = 0;
           goto exit;
         }
@@ -7030,10 +7038,6 @@ bool RulesProcessEvent(char *json_event) {
 #define STASK_STACK 8192
 #endif
 
-#ifndef STASK_PRIO
-#define STASK_PRIO 1
-#endif //ESP32
-
 #if 1
 
 struct ESP32_Task {
@@ -7073,17 +7077,17 @@ void script_task2(void *arg) {
     }
   }
 }
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core) {
+uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, uint32_t prio) {
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
   if (num == 1) {
     if (esp32_tasks[0].task_t) { vTaskDelete(esp32_tasks[0].task_t); }
-    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, STASK_PRIO, &esp32_tasks[0].task_t, core);
+    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[0].task_t, core);
     esp32_tasks[0].task_timer = time;
   } else {
     if (esp32_tasks[1].task_t) { vTaskDelete(esp32_tasks[1].task_t); }
-    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, STASK_PRIO, &esp32_tasks[1].task_t, core);
+    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[1].task_t, core);
     esp32_tasks[1].task_timer = time;
   }
   return res;
@@ -7109,17 +7113,17 @@ void script_task2(void *arg) {
   }
 }
 
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core) {
+uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, uint32_t prio) {
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
   if (num == 1) {
     if (task_t1) { vTaskDelete(task_t1); }
-    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, STASK_PRIO, &task_t1, core);
+    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &task_t1, core);
     task_timer1 = time;
   } else {
     if (task_t2) { vTaskDelete(task_t2); }
-    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, STASK_PRIO, &task_t2, core);
+    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &task_t2, core);
     task_timer2 = time;
   }
   return res;

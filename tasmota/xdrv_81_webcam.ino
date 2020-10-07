@@ -60,6 +60,8 @@
 
 #define XDRV_81           81
 
+#define ENABLE_RTSPSERVER
+
 #include "esp_camera.h"
 #include "sensor.h"
 #include "fb_gfx.h"
@@ -104,6 +106,19 @@ struct {
   uint16_t face_detect_time;
 #endif
 } Wc;
+
+#ifdef ENABLE_RTSPSERVER
+#include <OV2640.h>
+#include <SimStreamer.h>
+#include <OV2640Streamer.h>
+#include <CRtspSession.h>
+WiFiServer rtspServer(8554);
+CStreamer *rtsp_streamer;
+CRtspSession *rtsp_session;
+WiFiClient rtsp_client;
+uint8_t rtsp_start;
+OV2640 cam;
+#endif
 
 /*********************************************************************************************/
 
@@ -824,6 +839,9 @@ void WcStreamControl() {
 }
 
 /*********************************************************************************************/
+#ifdef ENABLE_RTSPSERVER
+static uint32_t lastimage;
+#endif
 
 void WcLoop(void) {
   if (CamServer) {
@@ -833,6 +851,54 @@ void WcLoop(void) {
   if (motion_detect) { WcDetectMotion(); }
 #ifdef USE_FACE_DETECT
   if (Wc.face_detect_time) { WcDetectFace(); }
+#endif
+
+#ifdef ENABLE_RTSPSERVER
+
+    if (!rtsp_start && !global_state.wifi_down && Wc.up) {
+      rtspServer.begin();
+      rtsp_start = 1;
+      AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP init"));
+      lastimage = millis();
+    }
+
+    uint32_t msecPerFrame = 100;
+
+    // If we have an active client connection, just service that until gone
+    // (FIXME - support multiple simultaneous clients)
+    if (rtsp_session) {
+        rtsp_session->handleRequests(0); // we don't use a timeout here,
+        // instead we send only if we have new enough frames
+
+
+        uint32_t now = millis();
+        if ((now > (lastimage + msecPerFrame)) || (now < lastimage)) { // handle clock rollover
+            rtsp_session->broadcastCurrentFrame(now);
+            lastimage = now;
+          //  AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP session frame"));
+            // check if we are overrunning our max frame rate
+            now = millis();
+            if (now > lastimage + msecPerFrame) {
+              //  printf("warning exceeding max frame rate of %d ms\n", now - lastimage);
+            }
+        }
+
+        if (rtsp_session->m_stopped) {
+            delete rtsp_session;
+            delete rtsp_streamer;
+            rtsp_session = NULL;
+            rtsp_streamer = NULL;
+            AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP stopped"));
+        }
+    }
+    else {
+        rtsp_client = rtspServer.accept();
+        if (rtsp_client) {
+            rtsp_streamer = new OV2640Streamer(&rtsp_client, cam);        // our streamer for UDP/TCP based RTP transport
+            rtsp_session = new CRtspSession(&rtsp_client, rtsp_streamer); // our threads RTSP session and state
+            AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP stream created"));
+        }
+    }
 #endif
 }
 
@@ -880,15 +946,16 @@ void WcInit(void) {
 #define D_CMND_WC_SATURATION "Saturation"
 #define D_CMND_WC_BRIGHTNESS "Brightness"
 #define D_CMND_WC_CONTRAST "Contrast"
+#define D_CMND_WC_INIT "Init"
 
 const char kWCCommands[] PROGMEM =  D_PRFX_WEBCAM "|"  // Prefix
   "|" D_CMND_WC_STREAM "|" D_CMND_WC_RESOLUTION "|" D_CMND_WC_MIRROR "|" D_CMND_WC_FLIP "|"
-  D_CMND_WC_SATURATION "|" D_CMND_WC_BRIGHTNESS "|" D_CMND_WC_CONTRAST
+  D_CMND_WC_SATURATION "|" D_CMND_WC_BRIGHTNESS "|" D_CMND_WC_CONTRAST "|" D_CMND_WC_INIT
   ;
 
 void (* const WCCommand[])(void) PROGMEM = {
   &CmndWebcam, &CmndWebcamStream, &CmndWebcamResolution, &CmndWebcamMirror, &CmndWebcamFlip,
-  &CmndWebcamSaturation, &CmndWebcamBrightness, &CmndWebcamContrast
+  &CmndWebcamSaturation, &CmndWebcamBrightness, &CmndWebcamContrast, &CmndWebcamInit
   };
 
 void CmndWebcam(void) {
@@ -954,6 +1021,11 @@ void CmndWebcamContrast(void) {
     WcSetOptions(4, Settings.webcam_config.contrast -2);
   }
   ResponseCmndNumber(Settings.webcam_config.contrast -2);
+}
+
+void CmndWebcamInit(void) {
+  WcStreamControl();
+  ResponseCmndDone();
 }
 
 /*********************************************************************************************\
