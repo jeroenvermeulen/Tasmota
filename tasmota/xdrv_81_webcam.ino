@@ -60,8 +60,6 @@
 
 #define XDRV_81           81
 
-#define ENABLE_RTSPSERVER
-
 #include "esp_camera.h"
 #include "sensor.h"
 #include "fb_gfx.h"
