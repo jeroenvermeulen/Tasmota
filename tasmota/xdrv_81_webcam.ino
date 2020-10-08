@@ -832,13 +832,15 @@ uint32_t WcSetStreamserver(uint32_t flag) {
 
 void WcStreamControl() {
   WcSetStreamserver(Settings.webcam_config.stream);
-  int resolution = (!Settings.webcam_config.stream) ? -1 : Settings.webcam_config.resolution;
-  WcSetup(resolution);
+  WcSetup(Settings.webcam_config.resolution);
 }
 
 /*********************************************************************************************/
 #ifdef ENABLE_RTSPSERVER
-static uint32_t lastimage;
+static uint32_t rtsp_lastframe_time;
+#ifndef RTSP_FRAME_TIME
+#define RTSP_FRAME_TIME 100
+#endif
 #endif
 
 void WcLoop(void) {
@@ -857,28 +859,19 @@ void WcLoop(void) {
       rtspServer.begin();
       rtsp_start = 1;
       AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP init"));
-      lastimage = millis();
+      rtsp_lastframe_time = millis();
     }
 
-    uint32_t msecPerFrame = 100;
-
     // If we have an active client connection, just service that until gone
-    // (FIXME - support multiple simultaneous clients)
     if (rtsp_session) {
         rtsp_session->handleRequests(0); // we don't use a timeout here,
         // instead we send only if we have new enough frames
 
-
         uint32_t now = millis();
-        if ((now > (lastimage + msecPerFrame)) || (now < lastimage)) { // handle clock rollover
+        if ((now-rtsp_lastframe_time) > RTSP_FRAME_TIME) {
             rtsp_session->broadcastCurrentFrame(now);
-            lastimage = now;
+            rtsp_lastframe_time = now;
           //  AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: RTSP session frame"));
-            // check if we are overrunning our max frame rate
-            now = millis();
-            if (now > lastimage + msecPerFrame) {
-              //  printf("warning exceeding max frame rate of %d ms\n", now - lastimage);
-            }
         }
 
         if (rtsp_session->m_stopped) {

@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+//#define STREAM_DEBUG
+
 CStreamer::CStreamer(SOCKET aClient, u_short width, u_short height) : m_Client(aClient)
 {
     printf("Creating TSP streamer\n");
@@ -175,8 +177,10 @@ void CStreamer::streamFrame(unsigned const char *data, uint32_t dataLen, uint32_
     // locate quant tables if possible
     BufPtr qtable0, qtable1;
 
-    if(!decodeJPEGfile(&data, &dataLen, &qtable0, &qtable1)) {
+    if (!decodeJPEGfile(&data, &dataLen, &qtable0, &qtable1)) {
+#ifdef STREAM_DEBUG
         printf("can't decode jpeg data\n");
+#endif
         return;
     }
 
@@ -191,6 +195,10 @@ void CStreamer::streamFrame(unsigned const char *data, uint32_t dataLen, uint32_
 
     m_SendIdx++;
     if (m_SendIdx > 1) m_SendIdx = 0;
+
+#ifdef STREAM_DEBUG
+    printf("frame sent\n");
+#endif
 };
 
 #include <assert.h>
