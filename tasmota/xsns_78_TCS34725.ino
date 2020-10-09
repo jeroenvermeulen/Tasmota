@@ -19,6 +19,9 @@
 #ifdef USE_I2C
 #ifdef USE_TCS34725
 
+#define XSNS_78       78
+#define XI2C_55       55  // See I2CDEVICES.md
+
 #include <Wire.h>
 #include <Adafruit_TCS34725.h>
 // about 2,2 k flash
@@ -174,25 +177,27 @@ void tcs34725::getData(void) {
 
 tcs34725 rgb_sensor;
 uint8_t TCS34725_ready;
-uint8_t TCS34725_cnt;
 
 void TCS34725_Detect() {
+  if (!I2cSetDevice(TCS34725_ADDRESS)) {
+    return;
+  }
   if (rgb_sensor.begin()==true) {
     TCS34725_ready=1;
+    I2cSetActiveFound(TCS34725_ADDRESS, "TCS34725");
+  } else {
+    // error
+    //AddLog_P(LOG_LEVEL_INFO, S_LOG_HTTP, PSTR("TCS34725 init error"));
   }
 }
 
-/*
+
 void TCS34725_EverySecond() {
   if (TCS34725_ready) {
-    TCS34725_cnt++;
-    if (TCS34725_cnt>3) {
-      TCS34725_cnt=0;
-      rgb_sensor.getData();
-    }
+    rgb_sensor.getData();
   }
 }
-*/
+
 
 #define D_LUX "Lux"
 #define D_COLOR_TEMP "ColorTemp"
@@ -220,7 +225,6 @@ void TCS34725_Show(boolean json)
   if (!TCS34725_ready) {
     return;
   }
-  rgb_sensor.getData();
   if (json) {
     ResponseAppend_P(JSON_TCS34725,(uint32_t)rgb_sensor.lux,(uint32_t)rgb_sensor.ct,(uint32_t)rgb_sensor.r,(uint32_t)rgb_sensor.g,(uint32_t)rgb_sensor.b,(uint32_t)rgb_sensor.c);
 #ifdef USE_WEBSERVER
@@ -236,19 +240,20 @@ void TCS34725_Show(boolean json)
  * Interface
 \*********************************************************************************************/
 
-#define XSNS_98  98
 
-bool Xsns98(byte function)
+
+bool Xsns78(byte function)
 {
   bool result = false;
 
-  if (i2c_flg) {
+  if (!I2cEnabled(XI2C_55)) { return false; }
+
     switch (function) {
       case FUNC_INIT:
         TCS34725_Detect();
         break;
       case FUNC_EVERY_SECOND:
-      //  TCS34725_EverySecond();
+        TCS34725_EverySecond();
         break;
       case FUNC_JSON_APPEND:
         TCS34725_Show(1);
@@ -258,7 +263,7 @@ bool Xsns98(byte function)
         TCS34725_Show(0);
         break;
 #endif  // USE_WEBSERVER
-    }
+
   }
   return result;
 }

@@ -77,3 +77,4 @@ Index | Define              | Driver  | Device   | Address(es) | Description
   52  | USE_HP303B          | xsns_73 | HP303B   | 0x76 - 0x77 | Pressure and temperature sensor
   53  | USE_MLX90640        | xdrv_84 | MLX90640 | 0x33        | IR array temperature sensor
   54  | USE_VL53L1X         | xsns_77 | VL53L1X  | 0x29        | Time-of-flight (ToF) distance sensor
+  55  | USE_TCS34725        | xsns_78 | TCS34725 | 0x29        | TCS34725 ambient light sensor
