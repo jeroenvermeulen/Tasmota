@@ -613,9 +613,6 @@ void GetFeatures(void)
 #if defined(USE_ENERGY_SENSOR) && defined(USE_WE517)
   feature6 |= 0x08000000;  // xnrg_17_ornowe517.ino
 #endif
-#if defined(USE_I2C) && defined(USE_TCS34725)
-  feature6 |= 0x100000000;  // xsns_78__TCS34725.ino
-#endif
 
 //  feature6 |= 0x10000000;
 
