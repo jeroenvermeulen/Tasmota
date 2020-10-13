@@ -4720,7 +4720,6 @@ void script_upload_start(void) {
 
     //if (upload_file) upload_file.write(upload.buf,upload.currentSize);
   } else if(upload.status == UPLOAD_FILE_END) {
-    AddLog_P(LOG_LEVEL_INFO, PSTR("HTP: upload close"));
     //if (upload_file) upload_file.close();
     if (Web.upload_error) {
       AddLog_P(LOG_LEVEL_INFO, PSTR("HTP: upload error"));
@@ -4729,6 +4728,7 @@ void script_upload_start(void) {
       bitWrite(Settings.rule_enabled, 0, sc_state);
       SaveScript();
       SaveScriptEnd();
+      //AddLog_P(LOG_LEVEL_INFO, PSTR("HTP: upload success"));
     }
   } else {
     Web.upload_error = 1;
