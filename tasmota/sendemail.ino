@@ -462,6 +462,11 @@ void attach_Array(char *aname) {
     char buff[64];
     sprintf_P(buff,PSTR("Content-Disposition: attachment; filename=\"%s.txt\"\r\n\r\n"), aname);
     g_client->write(buff);
+    // send timestamp
+    strcpy(buff, GetDateAndTime(DT_LOCAL).c_str());
+    strcat(buff,"\t");
+    g_client->write(buff);
+
     float *fp=array;
     for (uint32_t cnt = 0; cnt<alen; cnt++) {
       // export array as tab gelimited text
