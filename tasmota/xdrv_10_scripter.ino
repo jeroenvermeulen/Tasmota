@@ -995,6 +995,11 @@ void form1000(uint32_t number, char *dp, char sc) {
 #define SCRIPT_UDP_PORT 1999
 IPAddress script_udp_remote_ip;
 
+void Restart_globvars(void) {
+  Script_Stop_UDP();
+  Script_Init_UDP();
+}
+
 void Script_Stop_UDP(void) {
   if (!glob_script_mem.udp_flags.udp_used) return;
   if (glob_script_mem.udp_flags.udp_connected) {
@@ -4050,12 +4055,20 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               int8_t mode = fvar;
               digitalWrite(pinnr, mode & 1);
               goto next_line;
-            } else if (!strncmp(lp, "svars(", 5)) {
+            } else if (!strncmp(lp, "svars", 5)) {
               lp += 5;
               // save vars
               Scripter_save_pvars();
               goto next_line;
             }
+#ifdef USE_SCRIPT_GLOBVARS
+            else if (!strncmp(lp, "gvr", 3)) {
+              lp += 3;
+              // reset global vars udp server
+              Restart_globvars();
+              goto next_line;
+            }
+#endif
 #ifdef USE_LIGHT
 #ifdef USE_WS2812
             else if (!strncmp(lp, "ws2812(", 7)) {
@@ -6484,6 +6497,10 @@ void ScriptWebShow(char mc) {
         lp++;
       }
     }
+    char *cv_ptr;
+    float cv_max=0;
+    float cv_inc=0;
+    float *cv_count=0;
     while (lp) {
       while (*lp==SCRIPT_EOL) {
        lp++;
@@ -6493,6 +6510,41 @@ void ScriptWebShow(char mc) {
       }
       if (*lp!=';') {
         // send this line to web
+        SCRIPT_SKIP_SPACES
+        if (!strncmp(lp, "%for ", 5)) {
+          // for next loop
+          struct T_INDEX ind;
+          uint8_t vtype;
+          lp = isvar(lp + 5, &vtype, &ind, 0, 0, 0);
+          if ((vtype!=VAR_NV) && (vtype&STYPE)==0) {
+            uint16_t index = glob_script_mem.type[ind.index].index;
+            cv_count = &glob_script_mem.fvars[index];
+            SCRIPT_SKIP_SPACES
+            lp = GetNumericArgument(lp , OPER_EQU, cv_count, 0);
+            SCRIPT_SKIP_SPACES
+            lp = GetNumericArgument(lp , OPER_EQU, &cv_max, 0);
+            SCRIPT_SKIP_SPACES
+            lp = GetNumericArgument(lp , OPER_EQU, &cv_inc, 0);
+            cv_ptr = lp;
+            goto nextwebline;
+          } else {
+            continue;
+          }
+        } else if (!strncmp(lp, "%next", 5)) {
+          if (cv_count) {
+            // for next loop
+            *cv_count += cv_inc;
+            if (*cv_count<=cv_max) {
+              lp = cv_ptr;
+            } else {
+              cv_count = 0;
+              goto nextwebline;
+            }
+          } else {
+            goto nextwebline;
+          }
+        }
+
         Replace_Cmd_Vars(lp, 1, tmp, sizeof(tmp));
         char *lin = tmp;
         if ((!mc && (*lin!='$')) || (mc=='w' && (*lin!='$'))) {

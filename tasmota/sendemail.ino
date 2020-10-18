@@ -730,7 +730,7 @@ uint16_t SendMail(char *buffer) {
   //Start sending Email, can be set callback function to track the status
   if (!MailClient.sendMail(smtpData)) {
     //Serial.println("Error sending Email, " + MailClient.smtpErrorReason());
-    AddLog_P2(LOG_LEVEL_INFO, PSTR("Error sending Email, %s"), MailClient.smtpErrorReason());
+    AddLog_P2(LOG_LEVEL_INFO, PSTR("Error sending Email, %s"), MailClient.smtpErrorReason().c_str());
 
   } else {
     status=0;

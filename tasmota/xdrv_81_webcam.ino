@@ -212,7 +212,6 @@ uint32_t WcSetup(int32_t fsiz) {
 
   //esp_log_level_set("*", ESP_LOG_INFO);
 
-
   // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
   //                      for larger pre-allocated frame buffer.
 
@@ -229,11 +228,12 @@ uint32_t WcSetup(int32_t fsiz) {
     AddLog_P2(LOG_LEVEL_DEBUG, PSTR("CAM: PSRAM not found"));
   }
 
+//  AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: heap check 1: %d"),ESP_getFreeHeap());
+
   // stupid workaround camera diver eats up static ram should prefer PSRAM
   // so we steal static ram to force driver to alloc PSRAM
-  //ESP.getMaxAllocHeap()
-
-//  void *x=malloc(70000);
+//  uint32_t maxfram = ESP.getMaxAllocHeap();
+//  void *x=malloc(maxfram-4096);
   void *x = 0;
   esp_err_t err = esp_camera_init(&config);
   if (x) { free(x); }
@@ -242,6 +242,8 @@ uint32_t WcSetup(int32_t fsiz) {
     AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: Init failed with error 0x%x"), err);
     return 0;
   }
+
+//  AddLog_P2(LOG_LEVEL_INFO, PSTR("CAM: heap check 2: %d"),ESP_getFreeHeap());
 
   sensor_t * wc_s = esp_camera_sensor_get();
 
