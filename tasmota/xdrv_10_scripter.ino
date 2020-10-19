@@ -420,7 +420,10 @@ struct SCRIPT_MEM {
 #ifdef USE_SCRIPT_GLOBVARS
     UDP_FLAGS udp_flags;
 #endif
+    char web_mode;
 } glob_script_mem;
+
+
 
 bool event_handeled = false;
 
@@ -3113,7 +3116,10 @@ chknext:
           goto exit;
         }
 #endif // USE_FT5206
-
+        if (!strncmp(vname, "wm", 2)) {
+          fvar = glob_script_mem.web_mode;
+          goto exit;
+        }
         if (!strncmp(vname, "wday", 4)) {
           fvar = RtcTime.day_of_week;
           goto exit;
@@ -4142,7 +4148,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               char tmp[256];
               Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
               WSContentFlush();
-              Webserver->sendContent(tmp);
+              WSContentSend_P(PSTR("%s"),tmp);
               goto next_line;
             }
             else if (!strncmp(lp,"=>",2) || !strncmp(lp,"->",2) || !strncmp(lp,"+>",2) || !strncmp(lp,"print",5)) {
@@ -6493,10 +6499,10 @@ uint32_t cnt;
 }
 
 void ScriptWebShow(char mc) {
-  uint8_t web_script,xflg = 0;
+  uint8_t web_script;
+  glob_script_mem.web_mode = mc;
   if (mc=='w' || mc=='x') {
     if (mc=='x') {
-      xflg = 1;
       mc='$';
     }
     web_script = Run_Scripter(">w", -2, 0);
