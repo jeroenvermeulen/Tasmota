@@ -768,8 +768,14 @@ char *script;
     script_mem += size;
 
 #ifdef SCRIPT_LARGE_VNBUFF
-    glob_script_mem.vnp_offset = (uint16_t*)script_mem;
-    size = vars*sizeof(uint16_t);
+    uint32_t alignedmem = (uint32_t)script_mem;
+    if (alignedmem&1) {
+      alignedmem++;
+      size = vars*sizeof(uint16_t)+1;
+    } else {
+      size = vars*sizeof(uint16_t);
+    }
+    glob_script_mem.vnp_offset = (uint16_t*)alignedmem;
 #else
     glob_script_mem.vnp_offset = (uint8_t*)script_mem;
     size = vars*sizeof(uint8_t);
@@ -3718,6 +3724,29 @@ void esp32_beep(int32_t freq ,uint32_t len) {
 
 //#define IFTHEN_DEBUG
 
+char *scripter_sub(char *lp, uint8_t fromscriptcmd) {
+  lp += 1;
+  char *slp = lp;
+  uint8_t plen = 0;
+  while (*lp) {
+    if (*lp=='\n'|| *lp=='\r'|| *lp=='(') {
+      break;
+    }
+    lp++;
+    plen++;
+  }
+  if (fromscriptcmd) {
+    char *sp = glob_script_mem.scriptptr;
+    glob_script_mem.scriptptr = glob_script_mem.scriptptr_bu;
+    Run_Scripter(slp, plen, 0);
+    glob_script_mem.scriptptr = sp;
+  } else {
+    Run_Scripter(slp, plen, 0);
+  }
+  lp = slp;
+  return lp;
+}
+
 #define IF_NEST 8
 // execute section of scripter
 int16_t Run_Scripter(const char *type, int8_t tlen, char *js) {
@@ -4107,7 +4136,15 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               goto next_line;
             }
 #endif //ESP32
-
+            else if (!strncmp(lp, "wcs", 3)) {
+              lp+=4;
+              // skip one space after cmd
+              char tmp[256];
+              Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
+              WSContentFlush();
+              Webserver->sendContent(tmp);
+              goto next_line;
+            }
             else if (!strncmp(lp,"=>",2) || !strncmp(lp,"->",2) || !strncmp(lp,"+>",2) || !strncmp(lp,"print",5)) {
                 // execute cmd
                 uint8_t sflag = 0,pflg = 0,svmqtt,swll;
@@ -4170,25 +4207,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
                 goto next_line;
             } else if (!strncmp(lp, "=#", 2)) {
                 // subroutine
-                lp += 1;
-                char *slp = lp;
-                uint8_t plen = 0;
-                while (*lp) {
-                  if (*lp=='\n'|| *lp=='\r'|| *lp=='(') {
-                    break;
-                  }
-                  lp++;
-                  plen++;
-                }
-                if (fromscriptcmd) {
-                  char *sp = glob_script_mem.scriptptr;
-                  glob_script_mem.scriptptr = glob_script_mem.scriptptr_bu;
-                  Run_Scripter(slp, plen, 0);
-                  glob_script_mem.scriptptr = sp;
-                } else {
-                  Run_Scripter(slp, plen, 0);
-                }
-                lp = slp;
+                lp = scripter_sub(lp, fromscriptcmd);
                 goto next_line;
             } else if (!strncmp(lp, "=(", 2)) {
                 lp += 2;
@@ -6543,6 +6562,10 @@ void ScriptWebShow(char mc) {
           } else {
             goto nextwebline;
           }
+        } else if (!strncmp(lp, "%=#", 3)) {
+          // subroutine
+          lp = scripter_sub(lp + 1, 0);
+          goto nextwebline;
         }
 
         Replace_Cmd_Vars(lp, 1, tmp, sizeof(tmp));
