@@ -220,6 +220,12 @@ bool MqttPublishLib(const char* topic, bool retained)
   return result;
 }
 
+void MqttDumpData(char* topic, char* data, uint32_t data_len) {
+  char dump_data[data_len +1];
+  memcpy(dump_data, data, sizeof(dump_data));  // Make another copy for removing optional control characters
+  AddLog_P2(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_MQTT D_DATA_SIZE " %d, \"%s %s\""), data_len, topic, RemoveControlCharacter(dump_data));
+}
+
 void MqttDataHandler(char* mqtt_topic, uint8_t* mqtt_data, unsigned int data_len)
 {
 #ifdef USE_DEBUG_DRIVER
@@ -245,8 +251,9 @@ void MqttDataHandler(char* mqtt_topic, uint8_t* mqtt_data, unsigned int data_len
   char data[data_len +1];
   memcpy(data, mqtt_data, sizeof(data));
 
-  AddLog_P2(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_MQTT D_RECEIVED_TOPIC " \"%s\", " D_DATA_SIZE " %d, " D_DATA " \"%s\""), topic, data_len, data);
+//  AddLog_P2(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_MQTT D_DATA_SIZE " %d, \"%s %s\""), data_len, topic, data);
 //  if (LOG_LEVEL_DEBUG_MORE <= seriallog_level) { Serial.println(data); }
+  MqttDumpData(topic, data, data_len);  // Use a function to save stack space used by dump_data
 
   // MQTT pre-processing
   XdrvMailbox.index = strlen(topic);
@@ -1171,7 +1178,7 @@ void CmndTlsKey(void) {
       memcpy_P(spi_buffer, tls_spi_start, tls_spi_len);
 
       // remove any white space from the base64
-      RemoveAllSpaces(XdrvMailbox.data);
+      RemoveSpace(XdrvMailbox.data);
 
       // allocate buffer for decoded base64
       uint32_t bin_len = decode_base64_length((unsigned char*)XdrvMailbox.data);

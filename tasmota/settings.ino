@@ -473,8 +473,11 @@ bool SettingsUpdateText(uint32_t index, const char* replace_me) {
     settings_text_mutex = false;
   }
 
-//  AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_CONFIG "CR %d/%d, Busy %d, Id %d = \"%s\""), GetSettingsTextLen(), settings_text_size, settings_text_busy_count, index_save, replace);
+#ifdef DEBUG_FUNC_SETTINGSUPDATETEXT
+  AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_CONFIG "CR %d/%d, Busy %d, Id %02d = \"%s\""), GetSettingsTextLen(), settings_text_size, settings_text_busy_count, index_save, replace);
+#else
   AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_CONFIG "CR %d/%d, Busy %d"), GetSettingsTextLen(), settings_text_size, settings_text_busy_count);
+#endif
 
   return true;
 }
@@ -727,6 +730,7 @@ void SettingsDefaultSet2(void)
   SysBitfield5  flag5 = { 0 };
 
 #ifdef ESP8266
+  Settings.gpio16_converted = 0xF5A0;
 //  Settings.config_version = 0;  // ESP8266 (Has been 0 for long time)
 #endif  // ESP8266
 #ifdef ESP32
@@ -870,17 +874,10 @@ void SettingsDefaultSet2(void)
   SettingsUpdateText(SET_STATE_TXT2, MQTT_STATUS_ON);
   SettingsUpdateText(SET_STATE_TXT3, MQTT_CMND_TOGGLE);
   SettingsUpdateText(SET_STATE_TXT4, MQTT_CMND_HOLD);
-  char fingerprint[64];
-  strncpy_P(fingerprint, PSTR(MQTT_FINGERPRINT1), sizeof(fingerprint));
-  char *p = fingerprint;
-  for (uint32_t i = 0; i < 20; i++) {
-    Settings.mqtt_fingerprint[0][i] = strtol(p, &p, 16);
-  }
-  strncpy_P(fingerprint, PSTR(MQTT_FINGERPRINT2), sizeof(fingerprint));
-  p = fingerprint;
-  for (uint32_t i = 0; i < 20; i++) {
-    Settings.mqtt_fingerprint[1][i] = strtol(p, &p, 16);
-  }
+  static const uint8_t fingerprint1[] PROGMEM = { MQTT_FINGERPRINT1 };
+  static const uint8_t fingerprint2[] PROGMEM = { MQTT_FINGERPRINT2 };
+  memcpy_P(Settings.mqtt_fingerprint[0], fingerprint1, sizeof(fingerprint1));
+  memcpy_P(Settings.mqtt_fingerprint[1], fingerprint2, sizeof(fingerprint2));
   Settings.tele_period = TELE_PERIOD;
   Settings.mqttlog_level = MQTT_LOG_LEVEL;
 
@@ -1082,13 +1079,8 @@ void SettingsDefaultSet2(void)
   flag4.mqtt_tls |= MQTT_TLS_ENABLED;
   flag4.mqtt_no_retain |= MQTT_NO_RETAIN;
 
-
 #ifdef USER_TEMPLATE
   JsonTemplate((char *)USER_TEMPLATE);
-#endif
-
-#ifdef ESP8266
-  Settings.gpio16_converted = 0xF5A0;
 #endif
 
   Settings.flag = flag;
@@ -1285,7 +1277,7 @@ void SettingsDelta(void)
       Settings.eth_clk_mode = ETH_CLKMODE;
       Settings.eth_address = ETH_ADDR;
     }
-#endif
+#endif  // ESP32
     if (Settings.version < 0x08030106) {
       Settings.fallback_module = FALLBACK_MODULE;
     }
@@ -1294,6 +1286,14 @@ void SettingsDelta(void)
       Settings.energy_power_delta[1] = 0;
       Settings.energy_power_delta[2] = 0;
     }
+#ifdef ESP8266
+    if (Settings.version < 0x09000002) {
+      char parameters[32];
+      snprintf_P(parameters, sizeof(parameters), PSTR("%d,%d,%d,%d,%d"),
+        Settings.ex_adc_param_type, Settings.ex_adc_param1, Settings.ex_adc_param2, Settings.ex_adc_param3, Settings.ex_adc_param4);
+      SettingsUpdateText(SET_ADC_PARAM1, parameters);
+    }
+#endif  // ESP8266
 
     Settings.version = VERSION;
     SettingsSave(1);

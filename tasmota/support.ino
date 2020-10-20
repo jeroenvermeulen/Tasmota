@@ -359,8 +359,8 @@ char* Unescape(char* buffer, uint32_t* size)
   return buffer;
 }
 
-char* RemoveSpace(char* p)
-{
+char* RemoveSpace(char* p) {
+  // Remove white-space character (' ','\t','\n','\v','\f','\r')
   char* write = p;
   char* read = p;
   char ch = '.';
@@ -371,12 +371,27 @@ char* RemoveSpace(char* p)
       *write++ = ch;
     }
   }
-//  *write = '\0';  // Removed 20190223 as it buffer overflows on no isspace found - no need either
   return p;
 }
 
-char* ReplaceCommaWithDot(char* p)
-{
+char* RemoveControlCharacter(char* p) {
+  // Remove control character (0x00 .. 0x1F and 0x7F)
+  char* write = p;
+  char* read = p;
+  char ch = '.';
+
+  while (ch != '\0') {
+    ch = *read++;
+    if (!iscntrl(ch)) {
+      *write++ = ch;
+    }
+  }
+  *write++ = '\0';
+  return p;
+}
+
+char* ReplaceCommaWithDot(char* p) {
+  // Replace character ',' with '.'
   char* write = (char*)p;
   char* read = (char*)p;
   char ch = '.';
@@ -442,6 +457,7 @@ char* Trim(char* p)
   return p;
 }
 
+/*
 char* RemoveAllSpaces(char* p)
 {
   // remove any white space from the base64
@@ -458,6 +474,7 @@ char* RemoveAllSpaces(char* p)
   }
   return p;
 }
+*/
 
 char* NoAlNumToUnderscore(char* dest, const char* source)
 {
@@ -868,8 +885,7 @@ int GetStateNumber(char *state_text)
   return state_number;
 }
 
-String GetSerialConfig(void)
-{
+String GetSerialConfig(void) {
   // Settings.serial_config layout
   // b000000xx - 5, 6, 7 or 8 data bits
   // b00000x00 - 1 or 2 stop bits
@@ -885,16 +901,14 @@ String GetSerialConfig(void)
   return String(config);
 }
 
-void SetSerialBegin()
-{
-  uint32_t baudrate = Settings.baudrate * 300;
+void SetSerialBegin(void) {
+  baudrate = Settings.baudrate * 300;
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_SERIAL "Set to %s %d bit/s"), GetSerialConfig().c_str(), baudrate);
   Serial.flush();
   Serial.begin(baudrate, (SerialConfig)pgm_read_byte(kTasmotaSerialConfig + Settings.serial_config));
 }
 
-void SetSerialConfig(uint32_t serial_config)
-{
+void SetSerialConfig(uint32_t serial_config) {
   if (serial_config > TS_SERIAL_8O2) {
     serial_config = TS_SERIAL_8N1;
   }
@@ -904,29 +918,29 @@ void SetSerialConfig(uint32_t serial_config)
   }
 }
 
-void SetSerialBaudrate(uint32_t baudrate)
-{
+void SetSerialBaudrate(uint32_t ubaudrate) {
+  baudrate = ubaudrate;
   Settings.baudrate = baudrate / 300;
   if (Serial.baudRate() != baudrate) {
     SetSerialBegin();
   }
 }
 
-void SetSerial(uint32_t baudrate, uint32_t serial_config)
-{
+void SetSerial(uint32_t ubaudrate, uint32_t serial_config) {
   Settings.flag.mqtt_serial = 0;  // CMND_SERIALSEND and CMND_SERIALLOG
   Settings.serial_config = serial_config;
+  baudrate = ubaudrate;
   Settings.baudrate = baudrate / 300;
   SetSeriallog(LOG_LEVEL_NONE);
   SetSerialBegin();
 }
 
-void ClaimSerial(void)
-{
+void ClaimSerial(void) {
   serial_local = true;
   AddLog_P(LOG_LEVEL_INFO, PSTR("SNS: Hardware Serial"));
   SetSeriallog(LOG_LEVEL_NONE);
-  Settings.baudrate = Serial.baudRate() / 300;
+  baudrate = Serial.baudRate();
+  Settings.baudrate = baudrate / 300;
 }
 
 void SerialSendRaw(char *codes)

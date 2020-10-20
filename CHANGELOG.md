@@ -3,7 +3,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [9.0.0.1]
+## [9.0.0.2]
+### Added
+- Support for Vietnamese language translations by Tâm.NT
+- Support for timers in case of no-sunset permanent day by cybermaus (#9543)
+- Command ``NoDelay`` for immediate backlog command execution by Erik Montnemery (#9544)
+- Command ``SwitchMode 15`` sending only MQTT message on switch change (#9596)
+- Support for EZO Ph and ORP sensors by Christopher Tremblay (#9567)
+- Support for EZO RTD sensors by Christopher Tremblay (#9585)
+- On ZigbeeBridge support for glowing led when permit join is active (#9581)
+- Support for PWM Dimmer multi-press and ledmask (#9584)
+
+### Changed
+- Command ``Gpio17`` replaces command ``Adc``
+- Command ``Gpios`` replaces command ``Adcs``
+- Management of serial baudrate (#9554)
+- ``#define MQTT_FINGERPRINT`` from string to hexnumbers (#9570)
+- Rotary driver adjusted accordingly if Mi Desk Lamp module is selected (#9399)
+
+### Fixed
+- Convert AdcParam parameters from versions before v9.0.0.2
+- Telegram message decoding error regression from v8.5.0.1
+- Correct Energy period display shortly after midnight by gominoa (#9536)
+- Rule handling of Var or Mem using text regression from v8.5.0.1 (#9540)
+- TuyaMcu energy display regression from v8.5.0.1 (#9547)
+- MQTT data corruption on ``MQTTLog 4`` (#9571)
+
+## [9.0.0.1] - 20201010
 ### Added
 - Optional support for Mitsubishi Electric HVAC by David Gwynne (#9237)
 - Optional support for Orno WE517-Modbus energy meter by Maxime Vincent (#9353)
@@ -11,11 +37,11 @@ All notable changes to this project will be documented in this file.
 - Optional support for inverted NeoPixelBus data line by enabling ``#define USE_WS2812_INVERTED`` (#8988)
 - PWM dimmer color/trigger on tap, SO88 led, DGR WITH_LOCAL flag by Paul Diem (#9474)
 - Support for stateful ACs using ``StateMode`` in tasmota-ir.bin by Arik Yavilevich (#9472)
-- Zigbee ``ZbData`` command for better support of device specific data
+- Zigbee command ``ZbData`` for better support of device specific data
 - Support for analog buttons indexed within standard button range
 
 ### Changed
-- Redesigning ESP8266 GPIO internal representation in line with ESP32
+- Redesigning ESP8266 GPIO internal representation in line with ESP32 changing ``Template`` layout too
 - New IR Raw compact format (#9444)
 - MAX31865 driver to support up to 6 thermocouples selected by ``MX31865 CS`` instead of ``SSPI CS`` (#9103)
 - A4988 optional microstep pin selection
@@ -27,15 +53,16 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Template conversion when GPIO17 is 0
 - Template using ``#define USER_TEMPLATE`` (#9506)
-- Ledlink blink when no network connected regression from 8.3.1.4 (#9292)
+- Ledlink blink when no network connected regression from v8.3.1.4 (#9292)
 - Exception 28 due to device group buffer overflow (#9459)
 - Shutter timing problem due to buffer overflow in calibration matrix (#9458)
 - Light wakeup exception 0 (divide by zero) when ``WakeupDuration`` is not initialised (#9466)
 - ADC initalization sequence (#9473)
+- Thermostat sensor status corruption regression from v8.5.0.1 (#9449)
 
 ### Removed
-- Support for direct upgrade from Tasmota versions before 7.0
-- Auto config update for all Friendlynames and Switchtopic from Tasmota versions before 8.0
+- Support for direct upgrade from Tasmota versions before v7.0
+- Auto config update for all Friendlynames and Switchtopic from Tasmota versions before v8.0
 
 ## [Released]
 
@@ -57,6 +84,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Replace ArduinoJson with JSMN for JSON parsing
 - ``WakeUp`` uses 256 steps instead of 100 (#9241)
+- Major redesign of TuyaMcu adding shutter, light and multiple dimmer support by Federico Leoni (#9330)
 
 ### Fixed
 - Energy total counters (#9263, #9266)
