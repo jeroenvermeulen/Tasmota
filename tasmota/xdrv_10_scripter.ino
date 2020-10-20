@@ -4149,6 +4149,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
               WSContentFlush();
               WSContentSend_P(PSTR("%s"),tmp);
+              WSContentFlush();
               goto next_line;
             }
             else if (!strncmp(lp,"=>",2) || !strncmp(lp,"->",2) || !strncmp(lp,"+>",2) || !strncmp(lp,"print",5)) {
@@ -6577,6 +6578,13 @@ void ScriptWebShow(char mc) {
         Replace_Cmd_Vars(lp, 1, tmp, sizeof(tmp));
         char *lin = tmp;
         if ((!mc && (*lin!='$')) || (mc=='w' && (*lin!='$'))) {
+        /*if (!mc || mc=='w') {
+          if (*lin=='$') {
+            lin++;
+            if (!strncmp(lin,"gc(", 3)) {
+              goto exgc;
+            }
+          }*/
           // normal web section
           if (*lin=='@') {
             lin++;
