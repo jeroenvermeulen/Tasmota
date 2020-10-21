@@ -1828,20 +1828,19 @@ struct SML_COUNTER {
 
 void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
 
+  uint32_t ctime=millis();
+  uint32_t ltime=ctime-sml_counters[index].sml_counter_ltime;
+  if (ltime<sml_counters[index].sml_debounce) return;
+
   uint8_t level=digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin);
   if (!level) {
     // falling edge
-    uint32_t ltime=millis()-sml_counters[index].sml_counter_ltime;
-    sml_counters[index].sml_counter_ltime=millis();
-    if (ltime>sml_counters[index].sml_debounce) {
-      RtcSettings.pulse_counter[index]++;
-      sml_counters[index].sml_cnt_updated=1;
-      //InjektCounterValue(sml_counters[index].sml_cnt_old_state,RtcSettings.pulse_counter[index]);
-    }
+    RtcSettings.pulse_counter[index]++;
+    sml_counters[index].sml_cnt_updated=1;
   } else {
     // rising edge
-    sml_counters[index].sml_counter_ltime=millis();
   }
+  sml_counters[index].sml_counter_ltime=ctime;
 }
 
 void ICACHE_RAM_ATTR SML_CounterUpd1(void) {
