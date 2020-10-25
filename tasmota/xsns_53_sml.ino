@@ -109,7 +109,18 @@ struct METER_DESC {
 #define EBZD_G 14
 
 // select this meter
-#define METER EHZ161_1
+// dummy ignores hardcoded interface
+#define METER DUMMY
+//#define METER EHZ161_1
+
+#if METER==DUMMY
+#undef METERS_USED
+#define METERS_USED 0
+struct METER_DESC const meter_desc[1]={
+  [0]={3,'o',0,SML_BAUDRATE,"OBIS",-1,1,0}};
+const uint8_t meter[]=
+"1,1-0:1.8.0*255(@1," D_TPWRIN ",kWh," DJ_TPWRIN ",4|";
+#endif
 
 
 #if METER==EHZ161_0
@@ -1662,6 +1673,7 @@ void SML_Show(boolean json) {
   //char b_mqtt_data[MESSZ];
   //b_mqtt_data[0]=0;
 
+    if (!meters_used) return;
 
     int8_t lastmind=((*mp)&7)-1;
     if (lastmind<0 || lastmind>=meters_used) lastmind=0;
@@ -1826,22 +1838,56 @@ struct SML_COUNTER {
 #endif
 } sml_counters[MAX_COUNTERS];
 
+uint8_t sml_counter_pinstate;
+
+#if 1
 void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
 
-  uint32_t ctime=millis();
-  uint32_t ltime=ctime-sml_counters[index].sml_counter_ltime;
-  if (ltime<sml_counters[index].sml_debounce) return;
+uint32_t time = micros();
+uint32_t debounce_time;
+
+  // handle low and high debounce times when configured
+  if (digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin) == bitRead(sml_counter_pinstate, index)) {
+    // new pin state to be ignored because debounce time was not met during last IRQ
+    return;
+  }
+  //debounce_time = time - Counter.timer_low_high[index];
+  debounce_time = time - sml_counters[index].sml_counter_ltime;
+
+  if bitRead(sml_counter_pinstate, index) {
+    // last valid pin state was high, current pin state is low
+    if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+  } else {
+    // last valid pin state was low, current pin state is high
+    if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+  }
+
+  // passed debounce check, save pin state and timing
+  //Counter.timer_low_high[index] = time;
+  sml_counters[index].sml_counter_ltime = time;
+  sml_counter_pinstate ^= (1<<index);
+  RtcSettings.pulse_counter[index]++;
+}
+
+#else
+void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
 
   uint8_t level=digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin);
   if (!level) {
     // falling edge
-    RtcSettings.pulse_counter[index]++;
-    sml_counters[index].sml_cnt_updated=1;
+    uint32_t ltime=millis()-sml_counters[index].sml_counter_ltime;
+    sml_counters[index].sml_counter_ltime=millis();
+    if (ltime>sml_counters[index].sml_debounce) {
+      RtcSettings.pulse_counter[index]++;
+      sml_counters[index].sml_cnt_updated=1;
+      //InjektCounterValue(sml_counters[index].sml_cnt_old_state,RtcSettings.pulse_counter[index]);
+    }
   } else {
     // rising edge
+    sml_counters[index].sml_counter_ltime=millis();
   }
-  sml_counters[index].sml_counter_ltime=ctime;
 }
+#endif
 
 void ICACHE_RAM_ATTR SML_CounterUpd1(void) {
   SML_CounterUpd(0);
