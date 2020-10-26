@@ -107,13 +107,14 @@ struct METER_DESC {
 #define COMBO3b 12
 #define WGS_COMBO 13
 #define EBZD_G 14
+#define SML_NO_OP 15
 
 // select this meter
-// dummy ignores hardcoded interface
-#define METER DUMMY
+// SML_NO_OP ignores hardcoded interface
+#define METER SML_NO_OP
 //#define METER EHZ161_1
 
-#if METER==DUMMY
+#if METER==SML_NO_OP
 #undef METERS_USED
 #define METERS_USED 0
 struct METER_DESC const meter_desc[1]={
@@ -1841,7 +1842,9 @@ struct SML_COUNTER {
 uint8_t sml_counter_pinstate;
 
 #if 1
-void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
+uint8_t ctr_index[MAX_COUNTERS] =  { 0, 1, 2, 3 };
+void ICACHE_RAM_ATTR CounterIsrArg(void *arg) {
+uint32_t index = *static_cast<uint8_t*>(arg);
 
 uint32_t time = micros();
 uint32_t debounce_time;
@@ -1854,19 +1857,22 @@ uint32_t debounce_time;
   //debounce_time = time - Counter.timer_low_high[index];
   debounce_time = time - sml_counters[index].sml_counter_ltime;
 
+  if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+
   if bitRead(sml_counter_pinstate, index) {
     // last valid pin state was high, current pin state is low
-    if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+    //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
   } else {
     // last valid pin state was low, current pin state is high
-    if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+    //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+    // passed debounce check, save pin state and timing
+    //Counter.timer_low_high[index] = time;
+    RtcSettings.pulse_counter[index]++;
+    sml_counters[index].sml_cnt_updated=1;
   }
-
-  // passed debounce check, save pin state and timing
-  //Counter.timer_low_high[index] = time;
   sml_counters[index].sml_counter_ltime = time;
   sml_counter_pinstate ^= (1<<index);
-  RtcSettings.pulse_counter[index]++;
+
 }
 
 #else
@@ -1887,8 +1893,6 @@ void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
     sml_counters[index].sml_counter_ltime=millis();
   }
 }
-#endif
-
 void ICACHE_RAM_ATTR SML_CounterUpd1(void) {
   SML_CounterUpd(0);
 }
@@ -1904,6 +1908,7 @@ void ICACHE_RAM_ATTR SML_CounterUpd3(void) {
 void ICACHE_RAM_ATTR SML_CounterUpd4(void) {
   SML_CounterUpd(3);
 }
+#endif
 
 #ifdef USE_SCRIPT
 struct METER_DESC  script_meter_desc[MAX_METERS];
@@ -2176,7 +2181,7 @@ next_line:
 
 init10:
   typedef void (*function)();
-  function counter_callbacks[] = {SML_CounterUpd1,SML_CounterUpd2,SML_CounterUpd3,SML_CounterUpd4};
+//  function counter_callbacks[] = {SML_CounterUpd1,SML_CounterUpd2,SML_CounterUpd3,SML_CounterUpd4};
   uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
@@ -2203,7 +2208,9 @@ init10:
           // check for irq mode
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
-            attachInterrupt(meter_desc_p[meters].srcpin, counter_callbacks[cindex], CHANGE);
+            //attachInterrupt(meter_desc_p[meters].srcpin, counter_callbacks[cindex], CHANGE);
+            attachInterruptArg(meter_desc_p[meters].srcpin, CounterIsrArg,&ctr_index[cindex], CHANGE);
+
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
           }
