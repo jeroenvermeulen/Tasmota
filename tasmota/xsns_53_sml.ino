@@ -1842,8 +1842,8 @@ struct SML_COUNTER {
 uint8_t sml_counter_pinstate;
 
 #if 1
-uint8_t ctr_index[MAX_COUNTERS] =  { 0, 1, 2, 3 };
-void ICACHE_RAM_ATTR CounterIsrArg(void *arg) {
+uint8_t ctr_index1[MAX_COUNTERS] =  { 0, 1, 2, 3 };
+void ICACHE_RAM_ATTR CounterIsrArg1(void *arg) {
 uint32_t index = *static_cast<uint8_t*>(arg);
 
 uint32_t time = micros();
@@ -2210,7 +2210,7 @@ init10:
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
             //attachInterrupt(meter_desc_p[meters].srcpin, counter_callbacks[cindex], CHANGE);
-            attachInterruptArg(meter_desc_p[meters].srcpin, CounterIsrArg,&ctr_index[cindex], CHANGE);
+            attachInterruptArg(meter_desc_p[meters].srcpin, CounterIsrArg1,&ctr_index1[cindex], CHANGE);
 
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
