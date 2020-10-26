@@ -1862,13 +1862,14 @@ uint32_t debounce_time;
   if bitRead(sml_counter_pinstate, index) {
     // last valid pin state was high, current pin state is low
     //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+    RtcSettings.pulse_counter[index]++;
+    sml_counters[index].sml_cnt_updated=1;
   } else {
     // last valid pin state was low, current pin state is high
     //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
     // passed debounce check, save pin state and timing
     //Counter.timer_low_high[index] = time;
-    RtcSettings.pulse_counter[index]++;
-    sml_counters[index].sml_cnt_updated=1;
+
   }
   sml_counters[index].sml_counter_ltime = time;
   sml_counter_pinstate ^= (1<<index);
