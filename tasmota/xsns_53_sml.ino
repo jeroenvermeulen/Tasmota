@@ -1841,38 +1841,28 @@ struct SML_COUNTER {
 
 uint8_t sml_counter_pinstate;
 
-uint8_t ctr_index1[MAX_COUNTERS] =  { 0, 1, 2, 3 };
-void ICACHE_RAM_ATTR CounterIsrArg1(void *arg) {
+uint8_t sml_cnt_index[MAX_COUNTERS] =  { 0, 1, 2, 3 };
+void ICACHE_RAM_ATTR SML_CounterIsr(void *arg) {
 uint32_t index = *static_cast<uint8_t*>(arg);
 
 uint32_t time = micros();
 uint32_t debounce_time;
 
-  // handle low and high debounce times when configured
   if (digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin) == bitRead(sml_counter_pinstate, index)) {
-    // new pin state to be ignored because debounce time was not met during last IRQ
     return;
   }
-  //debounce_time = time - Counter.timer_low_high[index];
+
   debounce_time = time - sml_counters[index].sml_counter_ltime;
 
   if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
 
   if bitRead(sml_counter_pinstate, index) {
-    // last valid pin state was high, current pin state is low
-    //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+    // falling edge
     RtcSettings.pulse_counter[index]++;
     sml_counters[index].sml_cnt_updated=1;
-  } else {
-    // last valid pin state was low, current pin state is high
-    //if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
-    // passed debounce check, save pin state and timing
-    //Counter.timer_low_high[index] = time;
-
   }
   sml_counters[index].sml_counter_ltime = time;
   sml_counter_pinstate ^= (1<<index);
-
 }
 
 
@@ -2173,7 +2163,7 @@ init10:
           // check for irq mode
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
-            attachInterruptArg(meter_desc_p[meters].srcpin, CounterIsrArg1,&ctr_index1[cindex], CHANGE);
+            attachInterruptArg(meter_desc_p[meters].srcpin, SML_CounterIsr,&sml_cnt_index[cindex], CHANGE);
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
           }
