@@ -1841,7 +1841,6 @@ struct SML_COUNTER {
 
 uint8_t sml_counter_pinstate;
 
-#if 1
 uint8_t ctr_index1[MAX_COUNTERS] =  { 0, 1, 2, 3 };
 void ICACHE_RAM_ATTR CounterIsrArg1(void *arg) {
 uint32_t index = *static_cast<uint8_t*>(arg);
@@ -1876,40 +1875,6 @@ uint32_t debounce_time;
 
 }
 
-#else
-void ICACHE_RAM_ATTR SML_CounterUpd(uint8_t index) {
-
-  uint8_t level=digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin);
-  if (!level) {
-    // falling edge
-    uint32_t ltime=millis()-sml_counters[index].sml_counter_ltime;
-    sml_counters[index].sml_counter_ltime=millis();
-    if (ltime>sml_counters[index].sml_debounce) {
-      RtcSettings.pulse_counter[index]++;
-      sml_counters[index].sml_cnt_updated=1;
-      //InjektCounterValue(sml_counters[index].sml_cnt_old_state,RtcSettings.pulse_counter[index]);
-    }
-  } else {
-    // rising edge
-    sml_counters[index].sml_counter_ltime=millis();
-  }
-}
-void ICACHE_RAM_ATTR SML_CounterUpd1(void) {
-  SML_CounterUpd(0);
-}
-
-void ICACHE_RAM_ATTR SML_CounterUpd2(void) {
-  SML_CounterUpd(1);
-}
-
-void ICACHE_RAM_ATTR SML_CounterUpd3(void) {
-  SML_CounterUpd(2);
-}
-
-void ICACHE_RAM_ATTR SML_CounterUpd4(void) {
-  SML_CounterUpd(3);
-}
-#endif
 
 #ifdef USE_SCRIPT
 struct METER_DESC  script_meter_desc[MAX_METERS];
@@ -2182,7 +2147,6 @@ next_line:
 
 init10:
   typedef void (*function)();
-//  function counter_callbacks[] = {SML_CounterUpd1,SML_CounterUpd2,SML_CounterUpd3,SML_CounterUpd4};
   uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
@@ -2209,9 +2173,7 @@ init10:
           // check for irq mode
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
-            //attachInterrupt(meter_desc_p[meters].srcpin, counter_callbacks[cindex], CHANGE);
             attachInterruptArg(meter_desc_p[meters].srcpin, CounterIsrArg1,&ctr_index1[cindex], CHANGE);
-
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
           }
