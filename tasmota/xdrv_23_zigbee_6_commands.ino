@@ -136,6 +136,8 @@ const Z_CommandConverter Z_Commands[] PROGMEM = {
   { Z_(GetSceneMembership),0x0005, 0x06, 0x82,Z_(xxyyzzzz) },     // specific
   // Tuya - Moes specific
   { Z_(),               0xEF00, 0xFF, 0x83,   Z_() },             // capture any command in 0xEF00 cluster
+  // Terncy specific
+  { Z_(),               0xFCCC, 0x00, 0x82,   Z_(xxyy) },         // Terncy button (multi-)press
 };
 
 /*********************************************************************************************\
@@ -197,7 +199,7 @@ void Z_ReadAttrCallback(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster
 // This callback is registered after a an attribute read command was made to a light, and fires if we don't get any response after 1000 ms
 void Z_Unreachable(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster, uint8_t endpoint, uint32_t value) {
   if (BAD_SHORTADDR != shortaddr) {
-    zigbee_devices.setReachable(shortaddr, false);     // mark device as reachable
+    zigbee_devices.getShortAddr(shortaddr).setReachable(false);     // mark device as reachable
   }
 }
 
@@ -368,7 +370,7 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
         attr_list.addAttribute(command_name, PSTR("Count")).setUInt(xyz.y);
         {
 
-          Z_json_array group_list;
+          JsonGeneratorArray group_list;
           for (uint32_t i = 0; i < xyz.y; i++) {
             group_list.add(payload.get16(2 + 2*i));
           }
@@ -419,13 +421,17 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
           attr_list.removeAttribute(&attr_raw);   // remove raw command
         }
         break;
+      case 0xFCCC0000:      // Terncy button (multi-)press
+        attr_list.addAttribute(PSTR("TerncyPress"), true).setUInt(xyz.y);
+        attr_list.addAttribute(PSTR("TerncyCount"), true).setUInt(xyz.x);
+        break;
       }
     } else {  // general case
       // do we send command with endpoint suffix
       char command_suffix[4] = { 0x00 };  // empty string by default
       // if SO101 and multiple endpoints, append endpoint number
       if (Settings.flag4.zb_index_ep) {
-        if (zigbee_devices.countEndpoints(shortaddr) > 0) {
+        if (zigbee_devices.getShortAddr(shortaddr).countEndpoints() > 0) {
           snprintf_P(command_suffix, sizeof(command_suffix), PSTR("%d"), srcendpoint);
         }
       }
@@ -435,7 +441,7 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
         attr_list.addAttribute(command_name, command_suffix).setUInt(xyz.x);
       } else {
         // multiple answers, create an array
-        Z_json_array arr;
+        JsonGeneratorArray arr;
         arr.add(xyz.x);
         arr.add(xyz.y);
         if (xyz.z_type) {

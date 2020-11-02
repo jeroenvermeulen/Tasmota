@@ -279,4 +279,3 @@ uint8_t Adafruit_ILI9341::readcommand8(uint8_t command, uint8_t index) {
     _freq = freq;
     return r;
 }
-

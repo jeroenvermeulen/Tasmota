@@ -168,13 +168,13 @@ void SntpInit() {
 
 uint32_t SntpGetCurrentTimestamp(void) {
   time_t now = 0;
-  if (bNetIsTimeSync || ntp_force_sync)
+  if (bNetIsTimeSync || TasmotaGlobal.ntp_force_sync)
   {
-    //Serial_DebugX(("timesync configTime %d\n", ntp_force_sync, bNetIsTimeSync));
+    //Serial_DebugX(("timesync configTime %d\n", TasmotaGlobal.ntp_force_sync, bNetIsTimeSync));
     // init to UTC Time
     configTime(0, 0, SettingsText(SET_NTPSERVER1), SettingsText(SET_NTPSERVER2), SettingsText(SET_NTPSERVER3));
     bNetIsTimeSync = false;
-    ntp_force_sync = false;
+    TasmotaGlobal.ntp_force_sync = false;
   }
   time(&now);
   return now;
@@ -287,8 +287,8 @@ uint32_t ESP_getSketchSize(void) {
 }
 
 uint32_t ESP_getFreeHeap(void) {
-  return ESP.getFreeHeap();
-//  return ESP.getMaxAllocHeap();
+//  return ESP.getFreeHeap();
+  return ESP.getMaxAllocHeap();
 }
 
 uint32_t ESP_getMaxAllocHeap(void) {

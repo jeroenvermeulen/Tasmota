@@ -775,7 +775,7 @@ ADS1115 adc;
 void ADS1115_init(void) {
 
   ads1115_up=0;
-  if (!i2c_flg) return;
+  if (!TasmotaGlobal.i2c_enabled) return;
 
   adc.begin();
   adc.set_data_rate(ADS1115_DATA_RATE_128_SPS);
@@ -830,31 +830,31 @@ uint8_t dchars[16];
   if (dump2log&8) {
     // combo mode
     while (SML_SAVAILABLE) {
-      log_data[index]=':';
+      TasmotaGlobal.log_data[index]=':';
       index++;
-      log_data[index]=' ';
+      TasmotaGlobal.log_data[index]=' ';
       index++;
       d_lastms=millis();
       while ((millis()-d_lastms)<40) {
         if (SML_SAVAILABLE) {
           uint8_t c=SML_SREAD;
-          sprintf(&log_data[index],"%02x ",c);
+          sprintf(&TasmotaGlobal.log_data[index],"%02x ",c);
           dchars[hcnt]=c;
           index+=3;
           hcnt++;
           if (hcnt>15) {
             // line complete, build asci chars
-            log_data[index]='=';
+            TasmotaGlobal.log_data[index]='=';
             index++;
-            log_data[index]='>';
+            TasmotaGlobal.log_data[index]='>';
             index++;
-            log_data[index]=' ';
+            TasmotaGlobal.log_data[index]=' ';
             index++;
             for (uint8_t ccnt=0; ccnt<16; ccnt++) {
               if (isprint(dchars[ccnt])) {
-                log_data[index]=dchars[ccnt];
+                TasmotaGlobal.log_data[index]=dchars[ccnt];
               } else {
-                log_data[index]=' ';
+                TasmotaGlobal.log_data[index]=' ';
               }
               index++;
             }
@@ -863,7 +863,7 @@ uint8_t dchars[16];
         }
       }
       if (index>0) {
-        log_data[index]=0;
+        TasmotaGlobal.log_data[index]=0;
         AddLog(LOG_LEVEL_INFO);
         index=0;
         hcnt=0;
@@ -875,24 +875,24 @@ uint8_t dchars[16];
       while (SML_SAVAILABLE) {
         char c=SML_SREAD&0x7f;
         if (c=='\n' || c=='\r') {
-          log_data[sml_logindex]=0;
+          TasmotaGlobal.log_data[sml_logindex]=0;
           AddLog(LOG_LEVEL_INFO);
           sml_logindex=2;
-          log_data[0]=':';
-          log_data[1]=' ';
+          TasmotaGlobal.log_data[0]=':';
+          TasmotaGlobal.log_data[1]=' ';
           break;
         }
-        log_data[sml_logindex]=c;
-        if (sml_logindex<sizeof(log_data)-2) {
+        TasmotaGlobal.log_data[sml_logindex]=c;
+        if (sml_logindex<sizeof(TasmotaGlobal.log_data)-2) {
           sml_logindex++;
         }
       }
     } else {
       //while (SML_SAVAILABLE) {
       index=0;
-      log_data[index]=':';
+      TasmotaGlobal.log_data[index]=':';
       index++;
-      log_data[index]=' ';
+      TasmotaGlobal.log_data[index]=' ';
       index++;
       d_lastms=millis();
       while ((millis()-d_lastms)<40) {
@@ -901,7 +901,7 @@ uint8_t dchars[16];
           if (meter_desc_p[(dump2log&7)-1].type=='e') {
             // ebus
             c=SML_SREAD;
-            sprintf(&log_data[index],"%02x ",c);
+            sprintf(&TasmotaGlobal.log_data[index],"%02x ",c);
             index+=3;
             if (c==EBUS_SYNC) break;
           } else {
@@ -916,13 +916,13 @@ uint8_t dchars[16];
               }
             }
             c=SML_SREAD;
-            sprintf(&log_data[index],"%02x ",c);
+            sprintf(&TasmotaGlobal.log_data[index],"%02x ",c);
             index+=3;
           }
         }
       }
       if (index>2) {
-        log_data[index]=0;
+        TasmotaGlobal.log_data[index]=0;
         AddLog(LOG_LEVEL_INFO);
       }
     }
@@ -1922,15 +1922,7 @@ uint32_t SML_getscriptsize(char *lp) {
 #endif
 
 bool Gpio_used(uint8_t gpiopin) {
-/*
-  for (uint16_t i=0;i<GPIO_SENSOR_END;i++) {
-//    if (pin_gpio[i]==gpiopin) {
-    if (Pin(i)==gpiopin) {
-      return true;
-    }
-  }
-*/
-  if ((gpiopin < ARRAY_SIZE(gpio_pin)) && (gpio_pin[gpiopin] > 0)) {
+  if ((gpiopin < ARRAY_SIZE(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
     return true;
   }
   return false;
