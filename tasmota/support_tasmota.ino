@@ -25,10 +25,10 @@ char* Format(char* output, const char* input, int size)
   char *token;
   uint32_t digits = 0;
 
-  if (strstr(input, "%") != nullptr) {
+  if (strchr(input, '%') != nullptr) {
     strlcpy(output, input, size);
     token = strtok(output, "%");
-    if (strstr(input, "%") == input) {
+    if (strchr(input, '%') == input) {
       output[0] = '\0';
     } else {
       token = strtok(nullptr, "");
@@ -497,7 +497,7 @@ bool SendKey(uint32_t key, uint32_t device, uint32_t state)
   XdrvCall(FUNC_ANY_KEY);
   XdrvMailbox.payload = payload_save;
 #ifdef USE_PWM_DIMMER
-    result = true;
+    if (PWM_DIMMER == TasmotaGlobal.module_type) result = true;
   }
 #endif  // USE_PWM_DIMMER
   return result;

@@ -134,6 +134,7 @@
 | USE_MCP9808           | - | - | - | - | - | - | - |
 | USE_HP303B            | - | - | - | - | - | - | - |
 | USE_EZOCO2            | - | - | - | - | - | - | - |
+| USE_EZODO             | - | - | - | - | - | - | - |
 | USE_EZOEC             | - | - | - | - | - | - | - |
 | USE_EZOFLO            | - | - | - | - | - | - | - |
 | USE_EZOHUM            | - | - | - | - | - | - | - |
@@ -141,6 +142,7 @@
 | USE_EZOORP            | - | - | - | - | - | - | - |
 | USE_EZOPH             | - | - | - | - | - | - | - |
 | USE_EZOPRS            | - | - | - | - | - | - | - |
+| USE_EZORGB            | - | - | - | - | - | - | - |
 | USE_EZORTD            | - | - | - | - | - | - | - |
 |                       |   |   |   |   |   |   |   |
 | Feature or Sensor     | minimal | lite | tasmota | knx | sensors | ir | display | Remarks

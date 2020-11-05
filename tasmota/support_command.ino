@@ -391,7 +391,7 @@ void CmndPower(void)
 
 void CmndStatus(void)
 {
-  uint32_t payload = XdrvMailbox.payload;
+  int32_t payload = XdrvMailbox.payload;
 
   if (payload > MAX_STATUS) { return; }  // {"Command":"Error"}
   if (!Settings.flag.mqtt_enabled && (6 == payload)) { return; }  // SetOption3 - Enable MQTT
@@ -402,7 +402,7 @@ void CmndStatus(void)
   char stemp[200];
   char stemp2[TOPSZ];
 
-  if (0 == payload) {
+  if ((0 == payload) || (-99 == payload)) {
     uint32_t maxfn = (TasmotaGlobal.devices_present > MAX_FRIENDLYNAMES) ? MAX_FRIENDLYNAMES : (!TasmotaGlobal.devices_present) ? 1 : TasmotaGlobal.devices_present;
 #ifdef USE_SONOFF_IFAN
     if (IsModuleIfan()) { maxfn = 1; }
@@ -1242,7 +1242,7 @@ void CmndTemplate(void)
 
   bool error = false;
 
-  if (strstr(XdrvMailbox.data, "{") == nullptr) {  // If no JSON it must be parameter
+  if (strchr(XdrvMailbox.data, '{') == nullptr) {  // If no JSON it must be parameter
     if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= MAXMODULE)) {
       XdrvMailbox.payload--;
       if (ValidTemplateModule(XdrvMailbox.payload)) {
@@ -1550,7 +1550,7 @@ void CmndHostname(void)
 {
   if (!XdrvMailbox.grpflg && (XdrvMailbox.data_len > 0)) {
     SettingsUpdateText(SET_HOSTNAME, (SC_DEFAULT == Shortcut()) ? WIFI_HOSTNAME : XdrvMailbox.data);
-    if (strstr(SettingsText(SET_HOSTNAME), "%") != nullptr) {
+    if (strchr(SettingsText(SET_HOSTNAME), '%') != nullptr) {
       SettingsUpdateText(SET_HOSTNAME, WIFI_HOSTNAME);
     }
     TasmotaGlobal.restart_flag = 2;
@@ -1643,7 +1643,7 @@ void CmndInterlock(void)
   if (max_relays > sizeof(Settings.interlock[0]) * 8) { max_relays = sizeof(Settings.interlock[0]) * 8; }
   if (max_relays > 1) {                                         // Only interlock with more than 1 relay
     if (XdrvMailbox.data_len > 0) {
-      if (strstr(XdrvMailbox.data, ",") != nullptr) {                    // Interlock entry
+      if (strchr(XdrvMailbox.data, ',') != nullptr) {                    // Interlock entry
         for (uint32_t i = 0; i < MAX_INTERLOCKS; i++) { Settings.interlock[i] = 0; }  // Reset current interlocks
         char *group;
         char *q;
@@ -1801,7 +1801,7 @@ void CmndTimeStdDst(uint32_t ts)
 {
   // TimeStd 0/1, 0/1/2/3/4, 1..12, 1..7, 0..23, +/-780
   if (XdrvMailbox.data_len > 0) {
-    if (strstr(XdrvMailbox.data, ",") != nullptr) {   // Process parameter entry
+    if (strchr(XdrvMailbox.data, ',') != nullptr) {   // Process parameter entry
       uint32_t tpos = 0;                      // Parameter index
       int value = 0;
       char *p = XdrvMailbox.data;                           // Parameters like "1, 2,3 , 4 ,5, -120" or ",,,,,+240"
