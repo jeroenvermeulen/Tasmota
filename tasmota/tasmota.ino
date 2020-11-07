@@ -274,13 +274,13 @@ void setup(void) {
         Settings.module = Settings.fallback_module;  // Reset module to fallback module
 //        Settings.last_module = Settings.fallback_module;
       }
-      AddLog_P2(LOG_LEVEL_INFO, PSTR("FRC: " D_LOG_SOME_SETTINGS_RESET " (%d)"), RtcReboot.fast_reboot_count);
+      AddLog_P(LOG_LEVEL_INFO, PSTR("FRC: " D_LOG_SOME_SETTINGS_RESET " (%d)"), RtcReboot.fast_reboot_count);
     }
   }
 
   Format(TasmotaGlobal.mqtt_client, SettingsText(SET_MQTT_CLIENT), sizeof(TasmotaGlobal.mqtt_client));
   Format(TasmotaGlobal.mqtt_topic, SettingsText(SET_MQTT_TOPIC), sizeof(TasmotaGlobal.mqtt_topic));
-  if (strstr(SettingsText(SET_HOSTNAME), "%") != nullptr) {
+  if (strchr(SettingsText(SET_HOSTNAME), '%') != nullptr) {
     SettingsUpdateText(SET_HOSTNAME, WIFI_HOSTNAME);
     snprintf_P(TasmotaGlobal.hostname, sizeof(TasmotaGlobal.hostname)-1, SettingsText(SET_HOSTNAME), TasmotaGlobal.mqtt_topic, ESP_getChipId() & 0x1FFF);
   } else {
@@ -296,9 +296,9 @@ void setup(void) {
 
   SetPowerOnState();
 
-  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_PROJECT " %s %s " D_VERSION " %s%s-" ARDUINO_CORE_RELEASE), PROJECT, SettingsText(SET_DEVICENAME), TasmotaGlobal.version, TasmotaGlobal.image_name);
+  AddLog_P(LOG_LEVEL_INFO, PSTR(D_PROJECT " %s %s " D_VERSION " %s%s-" ARDUINO_CORE_RELEASE), PROJECT, SettingsText(SET_DEVICENAME), TasmotaGlobal.version, TasmotaGlobal.image_name);
 #ifdef FIRMWARE_MINIMAL
-  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_WARNING_MINIMAL_VERSION));
+  AddLog_P(LOG_LEVEL_INFO, PSTR(D_WARNING_MINIMAL_VERSION));
 #endif  // FIRMWARE_MINIMAL
 
   memcpy_P(TasmotaGlobal.log_data, VERSION_MARKER, 1);  // Dummy for compiler saving VERSION_MARKER

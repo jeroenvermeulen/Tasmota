@@ -3,7 +3,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [9.0.0.3]
+## [9.1.0.1]
+### Changed
+- Core library from v2.7.4.5 to v2.7.4.7
+- Platformio compiler option `no target align` enabled (#9749)
+- Consolidate `AddLog_P` into `AddLog_P2` and rename to `AddLog_P`
+
+### Fixed
+- NTP fallback server functionality (#9739)
+
+## [Released]
+
+### 9.1.0 20201105
+
+- Release Imogen
+
+## [9.0.0.3] - 20201105
 ### Added
 - TLS in binary tasmota-zbbridge (#9635)
 - Support for EZO O2 sensors by Christopher Tremblay (#9619)
@@ -17,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Command ``Gpios 255`` to show all possible GPIO configurations
 - Command ``SwitchText`` to change JSON switch names by barbudor (#9691)
 - Command ``SetOption114 1`` to detach Switches from Relays and enable MQTT action state for all the SwitchModes returning `{"Switch1":{"Action":"ON"}}`
+- Command ``DimmerStep 1..50`` to change default dimmer up and down step of 10% by James Turton (#9733)
 - HM10 Beacon support and refactoring by Christian Baars (#9702)
 - Support for Hass discovery of TuyaMcu and Sonoff Ifan by Federico Leoni (#9727)
 - Initial support for iBeacons (Sensor52) on ESP32 using internal BLE by rvbglas (#9732)
@@ -113,8 +129,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - Support for direct upgrade from Tasmota versions before v7.0
 - Auto config update for all Friendlynames and Switchtopic from Tasmota versions before v8.0
-
-## [Released]
 
 ## [8.5.1] - 20201002
 - Release Hannah
