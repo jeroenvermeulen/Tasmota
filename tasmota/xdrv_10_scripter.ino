@@ -746,7 +746,7 @@ char *script;
     // now copy all vars
     // numbers
     glob_script_mem.fvars = (float*)script_mem;
-    uint16_t size = sizeof(float)*nvars;
+    uint16_t size = sizeof(float) * nvars;
     memcpy(script_mem, fvalues, size);
     script_mem += size;
     glob_script_mem.s_fvars = (float*)script_mem;

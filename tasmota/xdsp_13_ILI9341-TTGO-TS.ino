@@ -80,6 +80,7 @@ void ILI9341_2_InitDriver()
     ili9341_2->init(Settings.display_width,Settings.display_height);
     renderer = ili9341_2;
     renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
+    renderer->dim(Settings.display_dimmer);
 
 #ifdef SHOW_SPLASH
     // Welcome text
