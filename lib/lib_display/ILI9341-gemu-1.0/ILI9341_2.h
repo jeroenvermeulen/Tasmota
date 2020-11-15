@@ -102,6 +102,15 @@
 #define ILI9341_2_PINK        0xF81F
 
 
+#define MADCTL_2_MY  0x80  ///< Bottom to top
+#define MADCTL_2_MX  0x40  ///< Right to left
+#define MADCTL_2_MV  0x20  ///< Reverse Mode
+#define MADCTL_2_ML  0x10  ///< LCD refresh Bottom to top
+#define MADCTL_2_RGB 0x00  ///< Red-Green-Blue pixel order
+#define MADCTL_2_BGR 0x08  ///< Blue-Green-Red pixel order
+#define MADCTL_2_MH  0x04  ///< LCD refresh right to left
+
+
 class ILI9341_2 : public Renderer {
 
  public:
@@ -140,6 +149,15 @@ class ILI9341_2 : public Renderer {
   SPISettings sspi2;
   void writedata(uint8_t d);
   void writecmd(uint8_t d);
+  void setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+  void drawPixel(int16_t x, int16_t y, uint16_t color);
+  void DisplayOnff(int8_t on);
+  void setRotation(uint8_t m);
+  void DisplayInit(int8_t p,int8_t size,int8_t rot,int8_t font);
+  void spiwrite(uint8_t c);
+  void spiwrite16(uint16_t c);
+  void spiwrite32(uint32_t c);
+
   uint8_t  tabcolor;
   uint8_t dimmer;
   int8_t _cs;

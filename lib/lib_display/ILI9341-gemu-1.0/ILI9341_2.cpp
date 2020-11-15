@@ -94,8 +94,10 @@ static const uint8_t PROGMEM ili9341_2_initcmd[] = {
     0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F,
   ILI9341_2_SLPOUT  , 0x80,                // Exit Sleep
   ILI9341_2_DISPON  , 0x80,                // Display on
+//  ILI9341_2_DISPOFF  , 0x80,                // Display on
   0x00                                   // End of list
 };
+
 
 // Constructor when using software SPI.  All output pins are configurable.
 ILI9341_2::ILI9341_2(int8_t cs, int8_t mosi, int8_t miso, int8_t sclk, int8_t res, int8_t dc, int8_t bp) : Renderer(ILI9341_2_TFTWIDTH, ILI9341_2_TFTHEIGHT) {
@@ -109,31 +111,214 @@ ILI9341_2::ILI9341_2(int8_t cs, int8_t mosi, int8_t miso, int8_t sclk, int8_t re
   _hwspi = 0;
 }
 
-void ILI9341_2::writedata(uint8_t d) {
+#define ILI9341_2_CS_LOW digitalWrite( _cs, LOW);
+#define ILI9341_2_CS_HIGH digitalWrite( _cs, HIGH);
 
+
+void ILI9341_2::writedata(uint8_t d) {
+  digitalWrite( _dc, HIGH);
+  spi2->write(d);
 }
 
 void ILI9341_2::writecmd(uint8_t d) {
-
+  digitalWrite( _dc, LOW);
+#ifdef ILI9341_2_HWSPI
+  spi2->write(d);
+#else
+  spiwrite(d);
+#endif
+  digitalWrite( _dc, HIGH);
 }
 
 void ILI9341_2::init(uint16_t width, uint16_t height) {
-  sspi2 = SPISettings(2500000, MSBFIRST, SPI_MODE3);
+  //sspi2 = SPISettings(2500000, MSBFIRST, SPI_MODE3);
+
+#ifdef ILI9341_2_HWSPI
   spi2 = new SPIClass(HSPI); // VSPI
+  //spi2 = new SPIClass(VSPI); // VSPI
+  spi2->setDataMode(SPI_MODE3);
+  spi2->setBitOrder(MSBFIRST);
+  spi2->setFrequency(40000000);
   spi2->begin(_sclk, _miso, _mosi, -1);
+#else
+  pinMode(_mosi, OUTPUT);
+  digitalWrite(_mosi,HIGH);
+  pinMode(_sclk, OUTPUT);
+  digitalWrite(_sclk,LOW);
+  pinMode(_miso, INPUT);
+#endif
+
+  pinMode(_cs, OUTPUT);
+  digitalWrite(_cs,HIGH);
+  pinMode(_dc, OUTPUT);
+  digitalWrite(_dc,HIGH);
+  pinMode(_bp, OUTPUT);
+  digitalWrite(_bp,HIGH);
+  pinMode(_res, OUTPUT);
+  digitalWrite(_res,HIGH);
+
+  pinMode(_res, OUTPUT);
+  digitalWrite(_res, HIGH);
+  delay(100);
+  digitalWrite(_res, LOW);
+  delay(100);
+  digitalWrite(_res, HIGH);
+  delay(200);
+
+  _mosi=23;
+  _sclk=18;
+  _cs=27;
+  _dc=26;
+
+  _mosi=23;
+  _sclk=18;
+  _cs=27;
+  _dc=26;
 
 //  startWrite();
 
+Serial.printf("%d - %d - %d - %d\n",_mosi,_sclk,_dc,_cs );
+
   uint8_t        cmd, x, numArgs;
   const uint8_t *addr = ili9341_2_initcmd;
-  while((cmd = pgm_read_byte(addr++)) > 0) {
+
+  while ((cmd = pgm_read_byte(addr++)) > 0) {
+      ILI9341_2_CS_LOW
       writecmd(cmd);
       x = pgm_read_byte(addr++);
       numArgs = x & 0x7F;
-      while(numArgs--) spi2->write(pgm_read_byte(addr++));
+
+#ifdef ILI9341_2_HWSPI
+      while (numArgs--) spi2->write(pgm_read_byte(addr++));
+#else
+      while (numArgs--) spiwrite(pgm_read_byte(addr++));
+#endif
+
+      ILI9341_2_CS_HIGH
       if(x & 0x80) delay(120);
   }
 
 //  endWrite();
 }
+
+void ILI9341_2::DisplayInit(int8_t p,int8_t size,int8_t rot,int8_t font) {
+  setRotation(rot);
+  //invertDisplay(false);
+  //setTextWrap(false);         // Allow text to run off edges
+  //cp437(true);
+  setTextFont(font&3);
+  setTextSize(size&7);
+  setTextColor(ILI9341_2_WHITE,ILI9341_2_BLACK);
+  setCursor(0,0);
+  fillScreen(ILI9341_2_BLACK);
+}
+
+void ILI9341_2::setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    uint32_t xa = ((uint32_t)x << 16) | (x+w-1);
+    uint32_t ya = ((uint32_t)y << 16) | (y+h-1);
+    writecmd(ILI9341_2_CASET); // Column addr set
+#ifdef ILI9341_2_HWSPI
+    spi2->write32(xa);
+#else
+    spiwrite32(xa);
+#endif
+    writecmd(ILI9341_2_PASET); // Row addr set
+
+#ifdef ILI9341_2_HWSPI
+    spi2->write32(ya);
+#else
+    spiwrite32(ya);
+#endif
+    writecmd(ILI9341_2_RAMWR); // write to RAM
+}
+
+void ILI9341_2::drawPixel(int16_t x, int16_t y, uint16_t color) {
+
+
+  if((x < 0) ||(x >= _width) || (y < 0) || (y >= _height)) return;
+
+  ILI9341_2_CS_LOW
+
+  setAddrWindow(x,y,1,1);
+
+#ifdef ILI9341_2_HWSPI
+  spi2->write16(color);
+#else
+  spiwrite16(0xffff);
+#endif
+  ILI9341_2_CS_HIGH
+
+}
+
+void ILI9341_2::setRotation(uint8_t m) {
+    rotation = m % 4; // can't be higher than 3
+    switch (rotation) {
+        case 0:
+            m = (MADCTL_2_MX | MADCTL_2_BGR);
+            _width  = ILI9341_2_TFTWIDTH;
+            _height = ILI9341_2_TFTHEIGHT;
+            break;
+        case 1:
+            m = (MADCTL_2_MV | MADCTL_2_BGR);
+            _width  = ILI9341_2_TFTHEIGHT;
+            _height = ILI9341_2_TFTWIDTH;
+            break;
+        case 2:
+            m = (MADCTL_2_MY | MADCTL_2_BGR);
+            _width  = ILI9341_2_TFTWIDTH;
+            _height = ILI9341_2_TFTHEIGHT;
+            break;
+        case 3:
+            m = (MADCTL_2_MX | MADCTL_2_MY | MADCTL_2_MV | MADCTL_2_BGR);
+            _width  = ILI9341_2_TFTHEIGHT;
+            _height = ILI9341_2_TFTWIDTH;
+            break;
+    }
+
+    ILI9341_2_CS_LOW
+    writecmd(ILI9341_2_MADCTL);
+    spiwrite(m);
+    ILI9341_2_CS_HIGH
+}
+
+void ILI9341_2::DisplayOnff(int8_t on) {
+  digitalWrite(_bp,on);
+}
+
+
+void ILI9341_2::spiwrite(uint8_t c) {
+
+#ifdef ILI9341_2_HWSPI
+  spi2->write(c);
+#else
+  for (uint8_t bit = 0x80; bit; bit >>= 1) {
+	   digitalWrite(_sclk, LOW);
+	    if (c & bit) digitalWrite(_mosi, HIGH);
+	    else        digitalWrite(_mosi, LOW);
+	    digitalWrite(_sclk, HIGH);
+  }
+#endif
+
+}
+
+void ILI9341_2::spiwrite16(uint16_t c) {
+#ifdef ILI9341_2_HWSPI
+    spi2->write16(c);
+#else
+    spiwrite(c>>8);
+    spiwrite(c);
+#endif
+}
+
+void ILI9341_2::spiwrite32(uint32_t c) {
+#ifdef ILI9341_2_HWSPI
+    spi2->write32(c);
+#else
+    spiwrite(c>>24);
+    spiwrite(c>>16);
+    spiwrite(c>>8);
+    spiwrite(c);
+#endif
+}
+
 #endif
