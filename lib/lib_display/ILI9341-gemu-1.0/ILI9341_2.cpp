@@ -60,6 +60,8 @@
 #endif
 
 
+#define ILI9341_2_HWSPI
+
 const uint16_t ili9341_2_colors[]={ILI9341_2_BLACK,ILI9341_2_WHITE,ILI9341_2_RED,ILI9341_2_GREEN,ILI9341_2_BLUE,ILI9341_2_CYAN,ILI9341_2_MAGENTA,\
   ILI9341_2_YELLOW,ILI9341_2_NAVY,ILI9341_2_DARKGREEN,ILI9341_2_DARKCYAN,ILI9341_2_MAROON,ILI9341_2_PURPLE,ILI9341_2_OLIVE,\
 ILI9341_2_LIGHTGREY,ILI9341_2_DARKGREY,ILI9341_2_ORANGE,ILI9341_2_GREENYELLOW,ILI9341_2_PINK};
@@ -157,6 +159,17 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
   pinMode(_res, OUTPUT);
   digitalWrite(_res,HIGH);
 
+
+  if (_bp>=0) {
+#ifdef ILI9341_2_DIMMER
+    ledcSetup(ESP32_PWM_CHANNEL,4000,8);
+    ledcAttachPin(_bp,ESP32_PWM_CHANNEL);
+    ledcWrite(ESP32_PWM_CHANNEL,128);
+#else
+    pinMode(_bp, OUTPUT);
+#endif
+  }
+
   pinMode(_res, OUTPUT);
   digitalWrite(_res, HIGH);
   delay(100);
@@ -164,20 +177,6 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
   delay(100);
   digitalWrite(_res, HIGH);
   delay(200);
-
-  _mosi=23;
-  _sclk=18;
-  _cs=27;
-  _dc=26;
-
-  _mosi=23;
-  _sclk=18;
-  _cs=27;
-  _dc=26;
-
-//  startWrite();
-
-Serial.printf("%d - %d - %d - %d\n",_mosi,_sclk,_dc,_cs );
 
   uint8_t        cmd, x, numArgs;
   const uint8_t *addr = ili9341_2_initcmd;
@@ -244,7 +243,7 @@ void ILI9341_2::drawPixel(int16_t x, int16_t y, uint16_t color) {
 #ifdef ILI9341_2_HWSPI
   spi2->write16(color);
 #else
-  spiwrite16(0xffff);
+  spiwrite16(color);
 #endif
   ILI9341_2_CS_HIGH
 
@@ -281,8 +280,109 @@ void ILI9341_2::setRotation(uint8_t m) {
     ILI9341_2_CS_HIGH
 }
 
+void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h,
+ uint16_t color) {
+
+  // Rudimentary clipping
+  if((x >= _width) || (y >= _height)) return;
+  if((y+h-1) >= _height) h = _height-y;
+
+  ILI9341_2_CS_LOW
+
+  setAddrWindow(x, y, 1, h);
+
+  uint8_t hi = color >> 8, lo = color;
+
+  while (h--) {
+    spiwrite(hi);
+    spiwrite(lo);
+  }
+
+  ILI9341_2_CS_HIGH
+
+}
+
+void ILI9341_2::drawFastHLine(int16_t x, int16_t y, int16_t w,
+  uint16_t color) {
+
+  // Rudimentary clipping
+  if((x >= _width) || (y >= _height)) return;
+  if((x+w-1) >= _width)  w = _width-x;
+
+  ILI9341_2_CS_LOW
+
+  setAddrWindow(x, y, w, 1);
+
+  uint8_t hi = color >> 8, lo = color;
+
+  while (w--) {
+    spiwrite(hi);
+    spiwrite(lo);
+  }
+
+  ILI9341_2_CS_HIGH
+}
+
+void ILI9341_2::fillScreen(uint16_t color) {
+  fillRect(0, 0,  _width, _height, color);
+}
+
+// fill a rectangle
+void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
+  uint16_t color) {
+
+  // rudimentary clipping (drawChar w/big text requires this)
+  if((x >= _width) || (y >= _height)) return;
+  if((x + w - 1) >= _width)  w = _width  - x;
+  if((y + h - 1) >= _height) h = _height - y;
+
+  ILI9341_2_CS_LOW
+
+  setAddrWindow(x, y, w-1, h-1);
+
+  uint8_t hi = color >> 8, lo = color;
+
+
+
+  for (y=h; y>0; y--) {
+    for (x=w; x>0; x--) {
+      spiwrite(hi);
+      spiwrite(lo);
+    }
+  }
+  ILI9341_2_CS_HIGH
+}
+
 void ILI9341_2::DisplayOnff(int8_t on) {
-  digitalWrite(_bp,on);
+  if (on) {
+    writecmd(ILI9341_2_DISPON);    //Display on
+    if (_bp>=0) {
+#ifdef ILI9341_2_DIMMER
+      ledcWrite(ESP32_PWM_CHANNEL,dimmer);
+#else
+      digitalWrite(_bp,HIGH);
+#endif
+    }
+  } else {
+    writecmd(ILI9341_2_DISPOFF);
+    if (_bp>=0) {
+#ifdef ILI9341_2_DIMMER
+      ledcWrite(ESP32_PWM_CHANNEL,0);
+#else
+      digitalWrite(_bp,LOW);
+#endif
+    }
+  }
+}
+
+// dimmer 0-100
+void ILI9341_2::dim(uint8_t dim) {
+  dimmer = dim;
+  if (dimmer>15) dimmer=15;
+  dimmer=((float)dimmer/15.0)*255.0;
+#ifdef ESP32
+  ledcWrite(ESP32_PWM_CHANNEL,dimmer);
+#endif
 }
 
 

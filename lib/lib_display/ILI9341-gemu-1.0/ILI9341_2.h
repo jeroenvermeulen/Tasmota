@@ -154,6 +154,13 @@ class ILI9341_2 : public Renderer {
   void DisplayOnff(int8_t on);
   void setRotation(uint8_t m);
   void DisplayInit(int8_t p,int8_t size,int8_t rot,int8_t font);
+  void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
+  void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
+  void fillScreen(uint16_t color);
+  void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+  void dim(uint8_t dim);
+
+
   void spiwrite(uint8_t c);
   void spiwrite16(uint16_t c);
   void spiwrite32(uint32_t c);
