@@ -59,8 +59,9 @@
 #define ESP32_PWM_CHANNEL 1
 #endif
 
-
+#ifdef ESP32
 #define ILI9341_2_HWSPI
+#endif
 
 const uint16_t ili9341_2_colors[]={ILI9341_2_BLACK,ILI9341_2_WHITE,ILI9341_2_RED,ILI9341_2_GREEN,ILI9341_2_BLUE,ILI9341_2_CYAN,ILI9341_2_MAGENTA,\
   ILI9341_2_YELLOW,ILI9341_2_NAVY,ILI9341_2_DARKGREEN,ILI9341_2_DARKCYAN,ILI9341_2_MAROON,ILI9341_2_PURPLE,ILI9341_2_OLIVE,\
@@ -291,11 +292,12 @@ void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h,
 
   setAddrWindow(x, y, 1, h);
 
-  uint8_t hi = color >> 8, lo = color;
-
   while (h--) {
-    spiwrite(hi);
-    spiwrite(lo);
+#ifdef ILI9341_2_HWSPI
+    spi2->write16(color);
+#else
+    spiwrite16(color);
+#endif
   }
 
   ILI9341_2_CS_HIGH
@@ -313,11 +315,12 @@ void ILI9341_2::drawFastHLine(int16_t x, int16_t y, int16_t w,
 
   setAddrWindow(x, y, w, 1);
 
-  uint8_t hi = color >> 8, lo = color;
-
   while (w--) {
-    spiwrite(hi);
-    spiwrite(lo);
+#ifdef ILI9341_2_HWSPI
+    spi2->write16(color);
+#else
+    spiwrite16(color);
+#endif
   }
 
   ILI9341_2_CS_HIGH
@@ -340,14 +343,13 @@ void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
 
   setAddrWindow(x, y, w-1, h-1);
 
-  uint8_t hi = color >> 8, lo = color;
-
-
-
   for (y=h; y>0; y--) {
     for (x=w; x>0; x--) {
-      spiwrite(hi);
-      spiwrite(lo);
+#ifdef ILI9341_2_HWSPI
+      spi2->write16(color);
+#else
+      spiwrite16(color);
+#endif
     }
   }
   ILI9341_2_CS_HIGH
