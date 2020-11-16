@@ -1,5 +1,5 @@
 /*!
-* @file Adafruit_ILI9341.cpp
+* @file ILI9341_2.cpp
 *
 * @mainpage Adafruit ILI9341 TFT Displays
 *
@@ -50,18 +50,16 @@
 #include "ILI9341_2.h"
 #include <limits.h>
 
-// if using software spi this optimizes the code
 
+// ESP32 uses 2. SPI BUS, ESP8266 uses software spi
 #ifdef ESP32
 #undef ILI9341_2_DIMMER
 #define ILI9341_2_DIMMER
 #undef ESP32_PWM_CHANNEL
 #define ESP32_PWM_CHANNEL 1
-#endif
-
-#ifdef ESP32
 #define ILI9341_2_HWSPI
 #endif
+
 
 const uint16_t ili9341_2_colors[]={ILI9341_2_BLACK,ILI9341_2_WHITE,ILI9341_2_RED,ILI9341_2_GREEN,ILI9341_2_BLUE,ILI9341_2_CYAN,ILI9341_2_MAGENTA,\
   ILI9341_2_YELLOW,ILI9341_2_NAVY,ILI9341_2_DARKGREEN,ILI9341_2_DARKCYAN,ILI9341_2_MAROON,ILI9341_2_PURPLE,ILI9341_2_OLIVE,\
@@ -102,7 +100,6 @@ static const uint8_t PROGMEM ili9341_2_initcmd[] = {
 };
 
 
-// Constructor when using software SPI.  All output pins are configurable.
 ILI9341_2::ILI9341_2(int8_t cs, int8_t mosi, int8_t miso, int8_t sclk, int8_t res, int8_t dc, int8_t bp) : Renderer(ILI9341_2_TFTWIDTH, ILI9341_2_TFTHEIGHT) {
   _cs   = cs;
   _mosi  = mosi;
@@ -118,11 +115,6 @@ ILI9341_2::ILI9341_2(int8_t cs, int8_t mosi, int8_t miso, int8_t sclk, int8_t re
 #define ILI9341_2_CS_HIGH digitalWrite( _cs, HIGH);
 
 
-void ILI9341_2::writedata(uint8_t d) {
-  digitalWrite( _dc, HIGH);
-  spi2->write(d);
-}
-
 void ILI9341_2::writecmd(uint8_t d) {
   digitalWrite( _dc, LOW);
 #ifdef ILI9341_2_HWSPI
@@ -137,8 +129,7 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
   //sspi2 = SPISettings(2500000, MSBFIRST, SPI_MODE3);
 
 #ifdef ILI9341_2_HWSPI
-  spi2 = new SPIClass(HSPI); // VSPI
-  //spi2 = new SPIClass(VSPI); // VSPI
+  spi2 = new SPIClass(HSPI);
   spi2->setDataMode(SPI_MODE3);
   spi2->setBitOrder(MSBFIRST);
   spi2->setFrequency(40000000);
@@ -203,9 +194,6 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
 
 void ILI9341_2::DisplayInit(int8_t p,int8_t size,int8_t rot,int8_t font) {
   setRotation(rot);
-  //invertDisplay(false);
-  //setTextWrap(false);         // Allow text to run off edges
-  //cp437(true);
   setTextFont(font&3);
   setTextSize(size&7);
   setTextColor(ILI9341_2_WHITE,ILI9341_2_BLACK);
@@ -281,8 +269,7 @@ void ILI9341_2::setRotation(uint8_t m) {
     ILI9341_2_CS_HIGH
 }
 
-void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h,
- uint16_t color) {
+void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
 
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
@@ -304,8 +291,7 @@ void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h,
 
 }
 
-void ILI9341_2::drawFastHLine(int16_t x, int16_t y, int16_t w,
-  uint16_t color) {
+void ILI9341_2::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
 
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
@@ -331,8 +317,7 @@ void ILI9341_2::fillScreen(uint16_t color) {
 }
 
 // fill a rectangle
-void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-  uint16_t color) {
+void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
 
   // rudimentary clipping (drawChar w/big text requires this)
   if((x >= _width) || (y >= _height)) return;

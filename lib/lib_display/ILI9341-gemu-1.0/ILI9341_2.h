@@ -147,7 +147,6 @@ class ILI9341_2 : public Renderer {
  private:
   SPIClass *spi2;
   SPISettings sspi2;
-  void writedata(uint8_t d);
   void writecmd(uint8_t d);
   void setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
