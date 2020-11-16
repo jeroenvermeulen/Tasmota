@@ -27,7 +27,7 @@ const char kTasmotaCommands[] PROGMEM = "|"  // No prefix
   D_CMND_SERIALDELIMITER "|" D_CMND_IPADDRESS "|" D_CMND_NTPSERVER "|" D_CMND_AP "|" D_CMND_SSID "|" D_CMND_PASSWORD "|" D_CMND_HOSTNAME "|" D_CMND_WIFICONFIG "|"
   D_CMND_DEVICENAME "|" D_CMND_FRIENDLYNAME "|" D_CMND_SWITCHMODE "|" D_CMND_INTERLOCK "|" D_CMND_TELEPERIOD "|" D_CMND_RESET "|" D_CMND_TIME "|" D_CMND_TIMEZONE "|" D_CMND_TIMESTD "|"
   D_CMND_TIMEDST "|" D_CMND_ALTITUDE "|" D_CMND_LEDPOWER "|" D_CMND_LEDSTATE "|" D_CMND_LEDMASK "|" D_CMND_LEDPWM_ON "|" D_CMND_LEDPWM_OFF "|" D_CMND_LEDPWM_MODE "|"
-  D_CMND_WIFIPOWER "|" D_CMND_TEMPOFFSET "|" D_CMND_HUMOFFSET "|" D_CMND_SPEEDUNIT "|" D_CMND_GLOBAL_TEMP "|" D_CMND_GLOBAL_HUM "|" D_CMND_WIFI "|" D_CMND_SWITCHTEXT "|"
+  D_CMND_WIFIPOWER "|" D_CMND_TEMPOFFSET "|" D_CMND_HUMOFFSET "|" D_CMND_SPEEDUNIT "|" D_CMND_GLOBAL_TEMP "|" D_CMND_GLOBAL_HUM"|" D_CMND_SWITCHTEXT "|"
 #ifdef USE_I2C
   D_CMND_I2CSCAN "|" D_CMND_I2CDRIVER "|"
 #endif
@@ -40,7 +40,7 @@ const char kTasmotaCommands[] PROGMEM = "|"  // No prefix
 #endif  // USE_DEVICE_GROUPS
   D_CMND_SENSOR "|" D_CMND_DRIVER
 #ifdef ESP32
-   "|" D_CMND_TOUCH_CAL "|" D_CMND_TOUCH_THRES "|" D_CMND_TOUCH_NUM "|" D_CMND_CPU_FREQUENCY
+   "|Info|" D_CMND_TOUCH_CAL "|" D_CMND_TOUCH_THRES "|" D_CMND_TOUCH_NUM "|" D_CMND_CPU_FREQUENCY "|" D_CMND_WIFI
 #endif //ESP32
   ;
 
@@ -54,7 +54,7 @@ void (* const TasmotaCommand[])(void) PROGMEM = {
   &CmndSerialDelimiter, &CmndIpAddress, &CmndNtpServer, &CmndAp, &CmndSsid, &CmndPassword, &CmndHostname, &CmndWifiConfig,
   &CmndDevicename, &CmndFriendlyname, &CmndSwitchMode, &CmndInterlock, &CmndTeleperiod, &CmndReset, &CmndTime, &CmndTimezone, &CmndTimeStd,
   &CmndTimeDst, &CmndAltitude, &CmndLedPower, &CmndLedState, &CmndLedMask, &CmndLedPwmOn, &CmndLedPwmOff, &CmndLedPwmMode,
-  &CmndWifiPower, &CmndTempOffset, &CmndHumOffset, &CmndSpeedUnit, &CmndGlobalTemp, &CmndGlobalHum, &CmndWifi, &CmndSwitchText,
+  &CmndWifiPower, &CmndTempOffset, &CmndHumOffset, &CmndSpeedUnit, &CmndGlobalTemp, &CmndGlobalHum, &CmndSwitchText,
 #ifdef USE_I2C
   &CmndI2cScan, CmndI2cDriver,
 #endif
@@ -67,7 +67,7 @@ void (* const TasmotaCommand[])(void) PROGMEM = {
 #endif  // USE_DEVICE_GROUPS
   &CmndSensor, &CmndDriver
 #ifdef ESP32
-  ,&CmndTouchCal, &CmndTouchThres, &CmndTouchNum, &CmndCpuFrequency
+  , &CmndInfo, &CmndTouchCal, &CmndTouchThres, &CmndTouchNum, &CmndCpuFrequency, &CmndWifi
 #endif //ESP32
   };
 
@@ -955,6 +955,12 @@ void CmndSetoption(void)
           }
           else if (5 == ptype) {           // SetOption114 .. 145
             bitWrite(Settings.flag5.data, pindex, XdrvMailbox.payload);
+            switch (pindex) {
+              case 1:                      // SetOption115 - Enable ESP32 MI32
+                Settings.flag3.sleep_normal = 1;  // SetOption60 - Enable normal sleep instead of dynamic sleep
+                TasmotaGlobal.restart_flag = 2;
+                break;
+            }
           }
         } else {
           ptype = 99;                      // Command Error
@@ -1191,8 +1197,6 @@ void CmndGpio(void)
 void ShowGpios(const uint16_t *NiceList, uint32_t size, uint32_t offset, uint32_t &lines) {
   uint32_t ridx;
   uint32_t midx;
-  myio cmodule;
-  ModuleGpios(&cmodule);
   bool jsflg = false;
   for (uint32_t i = offset; i < size; i++) {  // Skip ADC_NONE
     if (NiceList == nullptr) {
@@ -1201,7 +1205,6 @@ void ShowGpios(const uint16_t *NiceList, uint32_t size, uint32_t offset, uint32_
     } else {
       ridx = pgm_read_word(NiceList + i) & 0xFFE0;
       midx = BGPIO(ridx);
-      if ((XdrvMailbox.payload != 255) && GetUsedInModule(midx, cmodule.io)) { continue; }
     }
     if (!jsflg) {
       Response_P(PSTR("{\"" D_CMND_GPIOS "%d\":{"), lines);
@@ -1572,15 +1575,6 @@ void CmndWifiConfig(void)
   }
   char stemp1[TOPSZ];
   Response_P(S_JSON_COMMAND_NVALUE_SVALUE, XdrvMailbox.command, Settings.sta_config, GetTextIndexed(stemp1, sizeof(stemp1), Settings.sta_config, kWifiConfig));
-}
-
-void CmndWifi(void)
-{
-  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
-    Settings.flag4.network_wifi = XdrvMailbox.payload;
-    TasmotaGlobal.restart_flag = 2;
-  }
-  ResponseCmndStateText(Settings.flag4.network_wifi);
 }
 
 void CmndDevicename(void)
@@ -2060,6 +2054,20 @@ void CmndDriver(void)
 }
 
 #ifdef ESP32
+
+void CmndInfo(void) {
+  NvsInfo();
+  ResponseCmndDone();
+}
+
+void CmndWifi(void)
+{
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings.flag4.network_wifi = XdrvMailbox.payload;
+    TasmotaGlobal.restart_flag = 2;
+  }
+  ResponseCmndStateText(Settings.flag4.network_wifi);
+}
 
 void CmndCpuFrequency(void) {
   if ((80 == XdrvMailbox.payload) || (160 == XdrvMailbox.payload) || (240 == XdrvMailbox.payload)) {

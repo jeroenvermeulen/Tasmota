@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #include <esp-knx-ip.h> // KNX Header files have to be global else compile fails -> lib/headers
-#ifdef USE_KNX 
+#ifdef USE_KNX
 void KNX_CB_Action(message_t const &msg, void *arg);
 #endif  // USE_KNX
 
@@ -318,7 +318,7 @@ const char kWebColors[] PROGMEM =
   COLOR_TIMER_TAB_TEXT "|" COLOR_TIMER_TAB_BACKGROUND "|" COLOR_TITLE_TEXT;
 
 /*********************************************************************************************\
- * ESP8266 vs ESP32 related parameters
+ * ESP8266 specific parameters
 \*********************************************************************************************/
 
 #ifdef ESP8266
@@ -343,6 +343,10 @@ const char kWebColors[] PROGMEM =
 #endif
 
 #endif  // ESP8266
+
+/*********************************************************************************************\
+ * ESP32 specific parameters
+\*********************************************************************************************/
 
 #ifdef ESP32
 
@@ -387,8 +391,8 @@ const char kWebColors[] PROGMEM =
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
-#define AGPIO(x) (x<<5)
-#define BGPIO(x) (x>>5)
+#define AGPIO(x) ((x)<<5)
+#define BGPIO(x) ((x)>>5)
 
 #ifdef USE_DEVICE_GROUPS
 #define SendDeviceGroupMessage(DEVICE_INDEX, REQUEST_TYPE, ...) _SendDeviceGroupMessage(DEVICE_INDEX, REQUEST_TYPE, __VA_ARGS__, 0)

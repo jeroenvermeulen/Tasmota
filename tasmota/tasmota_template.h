@@ -32,6 +32,7 @@
 #undef USE_SONOFF_IFAN
 #undef USE_SONOFF_L1
 #undef USE_SONOFF_D1
+#undef USE_SHELLY_DIMMER
 #undef USE_RF_FLASH
 
 // Not ported (yet)
@@ -148,6 +149,8 @@ enum UserSelectablePins {
   GPIO_DYP_RX,
   GPIO_MIEL_HVAC_TX, GPIO_MIEL_HVAC_RX,  // Mitsubishi Electric HVAC
   GPIO_WE517_TX, GPIO_WE517_RX,        // ORNO WE517 Serial interface
+  GPIO_AS608_TX, GPIO_AS608_RX,        // Serial interface AS608 / R503
+  GPIO_SHELLY_DIMMER_BOOT0, GPIO_SHELLY_DIMMER_RST_INV,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -253,7 +256,9 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_ZIGBEE_RST "|"
   D_SENSOR_DYP_RX "|"
   D_SENSOR_MIEL_HVAC_TX "|" D_SENSOR_MIEL_HVAC_RX "|"
-  D_SENSOR_WE517_TX "|" D_SENSOR_WE517_RX
+  D_SENSOR_WE517_TX "|" D_SENSOR_WE517_RX "|"
+  D_SENSOR_AS608_TX "|" D_SENSOR_AS608_RX "|"
+  D_SENSOR_SHELLY_DIMMER_BOOT0 "|" D_SENSOR_SHELLY_DIMMER_RST_INV
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -380,6 +385,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #endif
 #ifdef USE_ELECTRIQ_MOODL
   AGPIO(GPIO_ELECTRIQ_MOODL_TX),
+#endif
+#ifdef USE_SHELLY_DIMMER
+  AGPIO(GPIO_SHELLY_DIMMER_BOOT0),
+  AGPIO(GPIO_SHELLY_DIMMER_RST_INV),
 #endif
 #endif  // USE_LIGHT
 
@@ -565,6 +574,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_OPENTHERM
   AGPIO(GPIO_BOILER_OT_TX),
   AGPIO(GPIO_BOILER_OT_RX),
+#endif
+#ifdef USE_AS608
+  AGPIO(GPIO_AS608_TX),
+  AGPIO(GPIO_AS608_RX),
 #endif
 
 /*-------------------------------------------------------------------------------------------*\

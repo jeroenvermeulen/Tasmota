@@ -90,7 +90,11 @@
 #define MQTT_LOG_LEVEL         LOG_LEVEL_NONE    // [MqttLog] (LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, LOG_LEVEL_DEBUG_MORE)
 
 // -- Ota -----------------------------------------
+#ifdef ESP8266
 #define OTA_URL                "http://ota.tasmota.com/tasmota/release/tasmota.bin.gz"  // [OtaUrl]
+#else  // ESP32
+#define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota.bin"  // [OtaUrl]
+#endif
 #define OTA_COMPATIBILITY      false             // [SetOption78] Disable OTA compatibility check
 
 // -- MQTT ----------------------------------------
@@ -394,7 +398,7 @@
 //  #define USE_MQTT_AWS_IOT                       // [Deprecated] Enable MQTT for AWS IoT - requires a private key (+11.9k code, +0.4k mem)
                                                  //   Note: you need to generate a private key + certificate per device and update 'tasmota/tasmota_aws_iot.cpp'
                                                  //   Full documentation here: https://github.com/arendst/Tasmota/wiki/AWS-IoT
-//  #define USE_4K_RSA                             // Support 4096 bits certificates, instead of 2048
+//  for USE_4K_RSA (support for 4096 bits certificates, instead of 2048), you need to uncommend `-DUSE_4K_RSA` in `build_flags` from `platform.ini` or `platform_override.ini`
 
 // -- Telegram Protocol ---------------------------
 //#define USE_TELEGRAM                             // Support for Telegram protocol (+49k code, +7.0k mem and +4.8k additional during connection handshake)
@@ -469,6 +473,10 @@
   #define USE_PWM_DIMMER_REMOTE                  // Add support for remote switches to PWM Dimmer (requires USE_DEVICE_GROUPS) (+0k6 code)
 //#define USE_KEELOQ                               // Add support for Jarolift rollers by Keeloq algorithm (+4k5 code)
 #define USE_SONOFF_D1                            // Add support for Sonoff D1 Dimmer (+0k7 code)
+//#define USE_SHELLY_DIMMER                        // Add support for Shelly Dimmer (+2k2 code)
+//  #define SHELLY_CMDS                            // Add command to send co-processor commands (+0k4 code)
+//  #define SHELLY_FW_UPGRADE                      // Add firmware upgrade option for co-processor (+30k code, +5k mem)
+//  #define SHELLY_VOLTAGE_MON                     // Add support for reading voltage and current measurment (+?? code)
 
 // -- Optional light modules ----------------------
 #define USE_WS2812                               // WS2812 Led string using library NeoPixelBus (+5k code, +1k mem, 232 iram) - Disable by //
@@ -573,6 +581,7 @@
 //  #define USE_EZOFLO                             // [I2cDriver55] Enable support for EZO's FLO sensor (+0k4 code) - Shared EZO code required for any EZO device (+1k2 code)
 //  #define USE_EZODO                              // [I2cDriver55] Enable support for EZO's DO sensor (+0k3 code) - Shared EZO code required for any EZO device (+1k2 code)
 //  #define USE_EZORGB                             // [I2cDriver55] Enable support for EZO's RGB sensor (+0k5 code) - Shared EZO code required for any EZO device (+1k2 code)
+//  #define USE_EZOPMP                             // [I2cDriver55] Enable support for EZO's PMP sensor (+0k3 code) - Shared EZO code required for any EZO device (+1k2 code)
 
 //  #define USE_DISPLAY                            // Add I2C Display Support (+2k code)
     #define USE_DISPLAY_MODES1TO5                // Enable display mode 1 to 5 in addition to mode 0
@@ -650,6 +659,8 @@
   #define USE_TASMOTA_CLIENT_SERIAL_SPEED 57600  // Depends on the sketch that is running on the Uno/Pro Mini
 //#define USE_OPENTHERM                            // Add support for OpenTherm (+15k code)
 //#define USE_MIEL_HVAC                            // Add support for Mitsubishi Electric HVAC serial interface (+5k code)
+//#define USE_AS608                                // Add support for AS608 optical and R503 capacitive fingerprint sensor (+3k code)
+//  #define USE_AS608_MESSAGES                     // Add verbose error messages (+0k4 code)
 
 // -- Power monitoring sensors --------------------
 #define USE_ENERGY_MARGIN_DETECTION              // Add support for Energy Margin detection (+1k6 code)
@@ -724,7 +735,8 @@
   #define USE_ZIGBEE_COALESCE_ATTR_TIMER 350     // timer to coalesce attribute values (in ms)
   #define USE_ZIGBEE_MODELID      "Tasmota Z2T"  // reported "ModelId"      (cluster 0000 / attribute 0005)
   #define USE_ZIGBEE_MANUFACTURER "Tasmota"      // reported "Manufacturer" (cluster 0000 / attribute 0004)
-  #define USE_ZBBRIDGE_TLS                       // TLS support for zbbridge 
+  #define USE_ZBBRIDGE_TLS                       // TLS support for zbbridge
+  #define USE_ZIGBEE_ZBBRIDGE_EEPROM 0x50        // I2C id for the ZBBridge EEPROM
 
 // -- Other sensors/drivers -----------------------
 
@@ -800,11 +812,15 @@
 //  #define ETH_TYPE          0                    // [EthType] 0 = ETH_PHY_LAN8720, 1 = ETH_PHY_TLK110, 2 = ETH_PHY_IP101
 //  #define ETH_ADDR          0                    // [EthAddress] 0 = PHY0 .. 31 = PHY31
 //  #define ETH_CLKMODE       0                    // [EthClockMode] 0 = ETH_CLOCK_GPIO0_IN, 1 = ETH_CLOCK_GPIO0_OUT, 2 = ETH_CLOCK_GPIO16_OUT, 3 = ETH_CLOCK_GPIO17_OUT
+  // Wireless-Tag WT32-ETH01
+//  #define ETH_TYPE          0                    // [EthType] 0 = ETH_PHY_LAN8720, 1 = ETH_PHY_TLK110, 2 = ETH_PHY_IP101
+//  #define ETH_ADDR          1                    // [EthAddress] 0 = PHY0 .. 31 = PHY31
+//  #define ETH_CLKMODE       0                    // [EthClockMode] 0 = ETH_CLOCK_GPIO0_IN, 1 = ETH_CLOCK_GPIO0_OUT, 2 = ETH_CLOCK_GPIO16_OUT, 3 = ETH_CLOCK_GPIO17_OUT
 
 #define USE_ADC                                  // Add support for ADC on GPIO32 to GPIO39
 
 //#define USE_SPI                                  // Add support for hardware SPI
-//#define USE_MI_ESP32                             // Add support for ESP32 as a BLE-bridge (+9k2 mem, +292k flash)
+#define USE_MI_ESP32                             // Add support for ESP32 as a BLE-bridge (+9k2 mem, +292k flash)
 //#define USE_WEBCAM                               // Add support for webcam
 
 #endif

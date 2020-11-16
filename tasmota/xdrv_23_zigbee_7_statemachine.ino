@@ -868,9 +868,7 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_LOG(LOG_LEVEL_INFO, kZigbeeStarted)
     ZI_CALL(&Z_State_Ready, 1)                    // Now accept incoming messages
     ZI_CALL(&Z_Load_Devices, 0)
-#ifndef USE_ZIGBEE_NO_READ_ATTRIBUTES
     ZI_CALL(&Z_Query_Bulbs, 0)
-#endif
 
   ZI_LABEL(ZIGBEE_LABEL_MAIN_LOOP)
     ZI_WAIT_FOREVER()
@@ -902,7 +900,6 @@ uint8_t ZigbeeGetInstructionSize(uint8_t instr) {   // in Zigbee_Instruction lin
 
 void ZigbeeGotoLabel(uint8_t label) {
   // look for the label scanning entire code
-  uint16_t goto_pc = 0xFFFF;    // 0xFFFF means not found
   uint8_t  cur_instr = 0;
   uint8_t  cur_d8 = 0;
   uint8_t  cur_instr_len = 1;       // size of current instruction in words

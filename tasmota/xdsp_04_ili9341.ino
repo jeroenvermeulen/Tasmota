@@ -109,10 +109,7 @@ void Ili9341InitDriver(void)
       Settings.display_height = ILI9341_TFTHEIGHT;
     }
 
-  //  tft = new Adafruit_ILI9341(Pin(GPIO_SPI_CS), Pin(GPIO_SPI_DC));
-
-    tft = new Adafruit_ILI9341(27, 26, 23, 18, 5, 12);
-
+    tft = new Adafruit_ILI9341(Pin(GPIO_SPI_CS), Pin(GPIO_SPI_DC));
     tft->begin();
 
 #ifdef USE_DISPLAY_MODES1TO5
@@ -259,8 +256,7 @@ bool Xdsp04(uint8_t function)
 {
   bool result = false;
 
-  //if (TasmotaGlobal.spi_enabled) {
-  if (1) {
+  if (TasmotaGlobal.spi_enabled) {
     if (FUNC_DISPLAY_INIT_DRIVER == function) {
       Ili9341InitDriver();
     }

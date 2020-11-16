@@ -307,6 +307,7 @@ enum SettingsTextIndex { SET_OTAURL,
                          SET_ADC_PARAM1, SET_ADC_PARAM2, SET_ADC_PARAM3, SET_ADC_PARAM4, SET_ADC_PARAM5, SET_ADC_PARAM6, SET_ADC_PARAM7, SET_ADC_PARAM8,  // MAX_ADCS
 #endif
                          SET_SWITCH_TXT1, SET_SWITCH_TXT2, SET_SWITCH_TXT3, SET_SWITCH_TXT4, SET_SWITCH_TXT5, SET_SWITCH_TXT6, SET_SWITCH_TXT7, SET_SWITCH_TXT8,  // MAX_SWITCHES
+                         SET_SHD_PARAM,
                          SET_MAX };
 
 enum DevGroupMessageType { DGR_MSGTYP_FULL_STATUS, DGR_MSGTYP_PARTIAL_UPDATE, DGR_MSGTYP_UPDATE, DGR_MSGTYP_UPDATE_MORE_TO_COME, DGR_MSGTYP_UPDATE_DIRECT, DGR_MSGTYPE_UPDATE_COMMAND, DGR_MSGTYPFLAG_WITH_LOCAL = 128 };
@@ -379,11 +380,12 @@ enum TuyaSupportedFunctions { TUYA_MCU_FUNC_NONE,
                               TUYA_MCU_FUNC_REL1_INV = 41, TUYA_MCU_FUNC_REL2_INV, TUYA_MCU_FUNC_REL3_INV, TUYA_MCU_FUNC_REL4_INV, TUYA_MCU_FUNC_REL5_INV,
                                 TUYA_MCU_FUNC_REL6_INV, TUYA_MCU_FUNC_REL7_INV, TUYA_MCU_FUNC_REL8_INV,
                               TUYA_MCU_FUNC_LOWPOWER_MODE = 51,
-                              TUYA_MCU_FUNC_FAN3 = 61, TUYA_MCU_FUNC_FAN4, TUYA_MCU_FUNC_FAN5, TUYA_MCU_FUNC_FAN6,
+                              TUYA_MCU_FUNC_ENUM1 = 61, TUYA_MCU_FUNC_ENUM2, TUYA_MCU_FUNC_ENUM3, TUYA_MCU_FUNC_ENUM4,
                               TUYA_MCU_FUNC_MOTOR_DIR = 97,
                               TUYA_MCU_FUNC_ERROR = 98,
                               TUYA_MCU_FUNC_DUMMY = 99,
                               TUYA_MCU_FUNC_LAST = 255
+                              // IDs from 230 to 234 are reserved for internal use
 };
 
 #endif  // _TASMOTA_H_

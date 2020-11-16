@@ -46,6 +46,7 @@
 #define D_JSON_CHANNEL "Channel"
 #define D_JSON_CO2 "CarbonDioxide"
 #define D_JSON_COMMAND "Command"
+#define D_JSON_CONFIDENCE "Confidence"
 #define D_JSON_CONFIG_HOLDER "CfgHolder"
 #define D_JSON_CONNECT_FAILED "Connect failed"
 #define D_JSON_COREVERSION "Core"
@@ -135,6 +136,7 @@
 #define D_JSON_PROGRAMSIZE "ProgramSize"
 #define D_JSON_PSRMAXMEMORY "PsrMax"
 #define D_JSON_PSRFREEMEMORY "PsrFree"
+#define D_JSON_PUMP "Pumped"
 #define D_JSON_RED "Red"
 #define D_JSON_REFERENCETEMPERATURE "ReferenceTemperature"
 #define D_JSON_REMAINING "Remaining"
@@ -514,11 +516,6 @@
 #define D_CMND_LATITUDE "Latitude"
 #define D_CMND_LONGITUDE "Longitude"
 
-// Commands xdrv_16_tuyadimmer.ino
-#define D_CMND_TUYA_MCU "TuyaMCU"
-#define D_CMND_TUYA_MCU_SEND_STATE "TuyaSend"
-#define D_JSON_TUYA_MCU_RECEIVED "TuyaReceived"
-
 // Commands xdrv_23_zigbee.ino
 #define D_PRFX_ZB "Zb"
 #define D_ZIGBEE_NOT_STARTED "Zigbee not started"
@@ -551,6 +548,7 @@
   #define D_JSON_ZIGBEE_MODELID "ModelId"
 #define D_CMND_ZIGBEE_PROBE "Probe"
 #define D_CMND_ZIGBEE_FORGET "Forget"
+#define D_CMND_ZIGBEE_INFO "Info"
 #define D_CMND_ZIGBEE_SAVE "Save"
   #define D_CMND_ZIGBEE_LINKQUALITY "LinkQuality"
   #define D_CMND_ZIGBEE_CLUSTER "Cluster"
@@ -567,12 +565,14 @@
 #define D_CMND_ZIGBEE_RESPONSE "Response"
   #define D_JSON_ZIGBEE_ZCL_SENT "ZbZCLSent"
 #define D_JSON_ZIGBEE_RECEIVED "ZbReceived"
+#define D_JSON_ZIGBEE_INFO "ZbInfo"
 #define D_CMND_ZIGBEE_BIND "Bind"
   #define D_JSON_ZIGBEE_BIND "ZbBind"
 #define D_CMND_ZIGBEE_UNBIND "Unbind"
   #define D_JSON_ZIGBEE_UNBIND "ZbUnbind"
 #define D_CMND_ZIGBEE_BIND_STATE "BindState"
   #define D_JSON_ZIGBEE_BIND_STATE "ZbBindState"
+#define D_CMND_ZIGBEE_LEAVE "Leave"
 #define D_CMND_ZIGBEE_MAP "Map"
   #define D_JSON_ZIGBEE_MAP "ZbMap"
 #define D_JSON_ZIGBEE_PARENT "ZbParent"
@@ -794,6 +794,7 @@ const char HTTP_SNS_DO[]            PROGMEM = "{s}%s "  D_DO                  "{
 const char HTTP_SNS_COLOR_RED[]     PROGMEM = "{s}%s "  D_COLOR_RED           "{m}%u "                            "{e}";
 const char HTTP_SNS_COLOR_GREEN[]   PROGMEM = "{s}%s "  D_COLOR_GREEN         "{m}%u "                            "{e}";
 const char HTTP_SNS_COLOR_BLUE[]    PROGMEM = "{s}%s "  D_COLOR_BLUE          "{m}%u "                            "{e}";
+const char HTTP_SNS_MILLILITERS[]   PROGMEM = "{s}%s "  D_VOLUME              "{m}%s " D_UNIT_MILLILITERS         "{e}";
 #endif  // USE_WEBSERVER
 
 const uint32_t MARKER_START = 0x5AA55AA5;

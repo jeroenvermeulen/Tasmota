@@ -9,17 +9,16 @@ See [migration path](https://tasmota.github.io/docs/Upgrading#migration-path) fo
 1. Migrate to **Sonoff-Tasmota 3.9.x**
 2. Migrate to **Sonoff-Tasmota 4.x**
 3. Migrate to **Sonoff-Tasmota 5.14**
-4. Migrate to **Sonoff-Tasmota 6.7.1**
-5. Migrate to **Tasmota 7.2.0**
+4. Migrate to **Sonoff-Tasmota 6.7.1** (http://ota.tasmota.com/tasmota/release-6.7.1/)
+5. Migrate to **Tasmota 7.2.0** (http://ota.tasmota.com/tasmota/release-7.2.0/)
 
 --- Major change in parameter storage layout ---
 
-6. Migrate to **Tasmota 8.1**
-7. Migrate to **Tasmota 8.5.1**
+6. Migrate to **Tasmota 8.5.1** (http://ota.tasmota.com/tasmota/release-8.5.1/)
 
 --- Major change in internal GPIO function representation ---
 
-8. Migrate to **Tasmota 9.1**
+7. Migrate to **Tasmota 9.1** (http://ota.tasmota.com/tasmota/release-9.1.0/)
 
 While fallback or downgrading is common practice it was never supported due to Settings additions or changes in newer releases. Starting with release **v9.1.0 Imogen** the internal GPIO function representation has changed in such a way that fallback is only possible to the latest GPIO configuration before installing **v9.1.0**.
 
@@ -58,9 +57,28 @@ The attached binaries can also be downloaded from http://ota.tasmota.com/tasmota
 [Complete list](BUILDS.md) of available feature and sensors.
 
 ## Changelog v9.1.0.1
+### Added
+- Command ``SetOption115 1`` to enable ESP32 MiBle
+- Command ``SetOption116 1`` to disable auto-query of zigbee light devices (avoids network storms with large groups)
+- Commands ``TuyaRGB``, ``TuyaEnum`` and ``TuyaEnumList`` (#9769)
+- Zigbee command ``ZbInfo`` and prepare support for EEPROM
+- Zigbee command ``ZbLeave`` to unpair a device
+- Zigbee support for Mi Door and Contact (#9759)
+- Zigbee alarm persistence (#9785)
+- Support for additional EZO sensors by Christopher Tremblay
+- Support for AS608 optical and R503 capacitive fingerprint sensor
+- Support for Shelly Dimmer 1 and 2 by James Turton (#9854)
+
 ### Changed
 - Core library from v2.7.4.5 to v2.7.4.7
 - Platformio compiler option `no target align` enabled (#9749)
+- Sonoff L1 color up scaling and color margin detection (#9545)
 
 ### Fixed
 - NTP fallback server functionality (#9739)
+- Telegram group chatid not supported (#9831)
+- KNX buttons, switches and sensors detection regression from v9.1.0 (#9811)
+- GUI MqttUser and MqttPassword updates when TLS is compiled in (#9825)
+
+### Removed
+- Version compatibility check
