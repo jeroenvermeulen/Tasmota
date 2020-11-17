@@ -262,7 +262,7 @@ String ESP32GetResetReason(uint32_t cpu_no) {
     case RTCWDT_CPU_RESET       : return F("RTC Watch dog Reset CPU");                          // 13
     case EXT_CPU_RESET          : return F("or APP CPU, reseted by PRO CPU");                   // 14
     case RTCWDT_BROWN_OUT_RESET : return F("Reset when the vdd voltage is not stable");         // 15
-    case RTCWDT_RTC_RESET       : return F("RTC Watch dog reset digital core and rtc module");  // 16            
+    case RTCWDT_RTC_RESET       : return F("RTC Watch dog reset digital core and rtc module");  // 16
   }
   return F("No meaning");                                                                       // 0 and undefined
 }
@@ -298,8 +298,8 @@ uint32_t ESP_getSketchSize(void) {
 }
 
 uint32_t ESP_getFreeHeap(void) {
-//  return ESP.getFreeHeap();
-  return ESP.getMaxAllocHeap();
+  return ESP.getFreeHeap();
+//  return ESP.getMaxAllocHeap();
 }
 
 uint32_t ESP_getMaxAllocHeap(void) {
