@@ -81,12 +81,15 @@ AudioGeneratorTalkie *talkie = nullptr;
 
 //! MAX98357A + INMP441 DOUBLE I2S BOARD
 #ifdef ESP32
-#undef TWATCH_DAC_IIS_BCK
-#undef TWATCH_DAC_IIS_WS
-#undef TWATCH_DAC_IIS_DOUT
-#define TWATCH_DAC_IIS_BCK       26
-#define TWATCH_DAC_IIS_WS        25
-#define TWATCH_DAC_IIS_DOUT      33
+#ifndef TWATCH_DAC_IIS_BCK
+  #define TWATCH_DAC_IIS_BCK       26
+#endif
+#ifndef TWATCH_DAC_IIS_WS
+ #define TWATCH_DAC_IIS_WS        25
+#endif
+#ifndef TWATCH_DAC_IIS_DOUT
+  #define TWATCH_DAC_IIS_DOUT      33
+#endif
 #else
 #undef TWATCH_DAC_IIS_BCK
 #undef TWATCH_DAC_IIS_WS
