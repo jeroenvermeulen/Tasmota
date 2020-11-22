@@ -193,6 +193,7 @@ void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
     talkie->say(spA_M_, sizeof(spA_M_));
   }
   delete talkie;
+  out->stop();
   TTGO_PWR_OFF
 }
 #endif
