@@ -1944,7 +1944,13 @@ chknext:
             case 9:
               fvar = Energy.active_power[2];
               break;
-
+            case 10:
+              fvar = Energy.start_energy;
+              break;
+            case 11:
+              fvar = Energy.daily;
+              break;
+                  
             default:
               fvar = 99999;
               break;
