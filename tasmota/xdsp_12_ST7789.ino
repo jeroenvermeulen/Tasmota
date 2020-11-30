@@ -113,7 +113,11 @@ void ST7789_InitDriver()
         st7789  = new Arduino_ST7789(Pin(GPIO_SPI_DC), reset, cs, bppin);
     } else {
       if ((PinUsed(GPIO_SSPI_CS) || PinUsed(GPIO_OLED_RESET)) && PinUsed(GPIO_SSPI_MOSI) && PinUsed(GPIO_SSPI_SCLK) && PinUsed(GPIO_SSPI_DC)) {
-        st7789  = new Arduino_ST7789(Pin(GPIO_SSPI_DC), reset, Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), cs, bppin);
+        if ((Pin(GPIO_SSPI_MOSI)==HW_SPI_MOSI) && (Pin(GPIO_SSPI_SCLK)==HW_SPI_CLK)) {
+          st7789  = new Arduino_ST7789(Pin(GPIO_SSPI_DC), reset, cs, bppin);
+        } else {
+          st7789  = new Arduino_ST7789(Pin(GPIO_SSPI_DC), reset, Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), cs, bppin);
+        }
       } else {
         return;
       }
