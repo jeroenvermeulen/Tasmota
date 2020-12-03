@@ -27,12 +27,13 @@
 #ifdef ESP8266
 #define ANALOG_RESOLUTION             10               // 12 = 4095, 11 = 2047, 10 = 1023
 #define ANALOG_RANGE                  1023             // 4095 = 12, 2047 = 11, 1023 = 10
-#else  // ESP32
+#endif  // ESP8266
+#ifdef ESP32
 #undef ANALOG_RESOLUTION
 #define ANALOG_RESOLUTION             12               // 12 = 4095, 11 = 2047, 10 = 1023
 #undef ANALOG_RANGE
 #define ANALOG_RANGE                  4095             // 4095 = 12, 2047 = 11, 1023 = 10
-#endif  // ESP8266 or ESP32
+#endif  // ESP32
 
 #define TO_CELSIUS(x) ((x) - 273.15)
 #define TO_KELVIN(x) ((x) + 273.15)
@@ -132,7 +133,7 @@ void AdcGetSettings(uint32_t idx) {
   Adc[idx].param2 = 0;
   Adc[idx].param3 = 0;
   Adc[idx].param4 = 0;
-  if (strstr(SettingsText(SET_ADC_PARAM1 + idx), ",") != nullptr) {
+  if (strchr(SettingsText(SET_ADC_PARAM1 + idx), ',') != nullptr) {
     Adcs.type = atoi(subStr(parameters, SettingsText(SET_ADC_PARAM1 + idx), ",", 1));
     Adc[idx].param1 = atoi(subStr(parameters, SettingsText(SET_ADC_PARAM1 + idx), ",", 2));
     Adc[idx].param2 = atoi(subStr(parameters, SettingsText(SET_ADC_PARAM1 + idx), ",", 3));

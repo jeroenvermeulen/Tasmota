@@ -278,7 +278,7 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zsingle,  Cx000C, 0x0041,  Z_(AnalogInMaxValue),     Cm1, 0 },
   { Zsingle,  Cx000C, 0x0045,  Z_(AnalogInMinValue),     Cm1, 0 },
   { Zbool,    Cx000C, 0x0051,  Z_(AnalogInOutOfService), Cm1, 0 },
-  { Zsingle,  Cx000C, 0x0055,  Z_(AqaraRotate),          Cm1, 0 },
+  { Zsingle,  Cx000C, 0x0055,  Z_(AnalogValue),          Cm1, 0 },
   // { 0xFF, Cx000C, 0x0057,  (AnalogInPriorityArray),Cm1, 0 },
   { Zenum8,   Cx000C, 0x0067,  Z_(AnalogInReliability),  Cm1, 0 },
   // { 0xFF, Cx000C, 0x0068,  (AnalogInRelinquishDefault),Cm1, 0 },
@@ -286,6 +286,7 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zmap8,    Cx000C, 0x006F,  Z_(AnalogInStatusFlags),  Cm1, 0 },
   { Zenum16,  Cx000C, 0x0075,  Z_(AnalogInEngineeringUnits),Cm1, 0 },
   { Zuint32,  Cx000C, 0x0100,  Z_(AnalogInApplicationType),Cm1, 0 },
+  { Zuint16,  Cx000C, 0xFF55,  Z_(AqaraRotate),          Cm1, 0 },
   { Zuint16,  Cx000C, 0xFF05,  Z_(Aqara_FF05),           Cm1, 0 },
 
   // Analog Output cluster
@@ -572,7 +573,7 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zuint8,   Cx0500, 0xFFF0 + ZA_GlassBreak, Z_(GlassBreak),Cm1, 0 },
 
   // Metering (Smart Energy) cluster
-  { Zuint48,  Cx0702, 0x0000,  Z_(CurrentSummDelivered), Cm1, 0 },
+  { Zuint48,  Cx0702, 0x0000,  Z_(EnergyTotal),          Cm1, 0 },
 
   // Meter Identification cluster
   { Zstring,  Cx0B01, 0x0000,  Z_(CompanyName),          Cm1, 0 },
@@ -592,6 +593,8 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zuint16,  Cx0B04, 0x0505,  Z_(RMSVoltage),            Cm1 + Z_EXPORT_DATA, Z_MAPPING(Z_Data_Plug, mains_voltage) },
   { Zuint16,  Cx0B04, 0x0508,  Z_(RMSCurrent),            Cm1, 0 },
   { Zint16,   Cx0B04, 0x050B,  Z_(ActivePower),           Cm1 + Z_EXPORT_DATA, Z_MAPPING(Z_Data_Plug, mains_power) },
+  { Zint16,   Cx0B04, 0x050E,  Z_(ReactivePower),         Cm1, 0 },
+  { Zint16,   Cx0B04, 0x050F,  Z_(ApparentPower),         Cm1, 0 },
 
   // Diagnostics cluster
   { Zuint16,  Cx0B05, 0x0000,  Z_(NumberOfResets),       Cm1, 0 },
@@ -754,6 +757,7 @@ public:
 
   void parseReportAttributes(Z_attribute_list& attr_list);
   void generateSyntheticAttributes(Z_attribute_list& attr_list);
+  void removeInvalidAttributes(Z_attribute_list& attr_list);
   void computeSyntheticAttributes(Z_attribute_list& attr_list);
   void generateCallBacks(Z_attribute_list& attr_list);
   void parseReadAttributes(Z_attribute_list& attr_list);
@@ -769,6 +773,7 @@ public:
   void syntheticAqaraSensor2(Z_attribute_list &attr_list, class Z_attribute &attr);
   void syntheticAqaraCubeOrButton(Z_attribute_list &attr_list, class Z_attribute &attr);
   void syntheticAqaraVibration(Z_attribute_list &attr_list, class Z_attribute &attr);
+  void syntheticAnalogValue(Z_attribute_list &attr_list, class Z_attribute &attr);
 
   // handle read attributes auto-responder
   void autoResponder(const uint16_t *attr_list_ids, size_t attr_len);
@@ -1230,6 +1235,29 @@ void ZCLFrame::generateSyntheticAttributes(Z_attribute_list& attr_list) {
       case 0x01010508:
         syntheticAqaraVibration(attr_list, attr);
         break;
+      case 0x000C0055:    // Analog Value
+        syntheticAnalogValue(attr_list, attr);
+        break;
+    }
+  }
+}
+
+//
+// Remove invalid values
+//
+void ZCLFrame::removeInvalidAttributes(Z_attribute_list& attr_list) {
+  // scan through attributes and apply specific converters
+  for (auto &attr : attr_list) {
+    if (attr.key_is_str) { continue; }    // pass if key is a name
+    uint32_t ccccaaaa = (attr.key.id.cluster << 16) | attr.key.id.attr_id;
+
+    switch (ccccaaaa) {      // 0xccccaaaa . c=cluster, a=attribute
+      case 0x04020000:       // Temperature
+        if (attr.getInt() <= -10000) {
+          // #9978, remove temperature of -100.00°C sent by lumi.weather
+          attr_list.removeAttribute(&attr);
+        }
+        break;
     }
   }
 }
@@ -1282,6 +1310,12 @@ void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
           int16_t pressure_sealevel = (pressure / FastPrecisePow(1.0 - ((float)Settings.altitude / 44330.0f), 5.255f)) - 21.6f;
           attr_list.addAttribute(0x0403, 0xFFF0).setInt(pressure_sealevel);
           // We create a synthetic attribute 0403/FFF0 to indicate sea level
+        }
+        break;
+      case 0x05000002:    // ZoneStatus
+        const Z_Data_Alarm & alarm = (const Z_Data_Alarm&) zigbee_devices.getShortAddr(_srcaddr).data.find(Z_Data_Type::Z_Alarm, _srcendpoint);
+        if (&alarm != nullptr) {
+          alarm.convertZoneStatus(attr_list, attr.getUInt());
         }
         break;
     }
@@ -1361,7 +1395,7 @@ void ZCLFrame::parseReadAttributes(Z_attribute_list& attr_list) {
 
   uint16_t read_attr_ids[len/2];
 
-  attr_list.addAttribute(F(D_CMND_ZIGBEE_CLUSTER)).setUInt(_cluster_id);
+  attr_list.addAttributePMEM(PSTR(D_CMND_ZIGBEE_CLUSTER)).setUInt(_cluster_id);
 
   JsonGeneratorArray attr_numbers;
   Z_attribute_list attr_names;
@@ -1383,8 +1417,8 @@ void ZCLFrame::parseReadAttributes(Z_attribute_list& attr_list) {
     }
     i += 2;
   }
-  attr_list.addAttribute(F("Read")).setStrRaw(attr_numbers.toString().c_str());
-  attr_list.addAttribute(F("ReadNames")).setStrRaw(attr_names.toString(true).c_str());
+  attr_list.addAttributePMEM(PSTR("Read")).setStrRaw(attr_numbers.toString().c_str());
+  attr_list.addAttributePMEM(PSTR("ReadNames")).setStrRaw(attr_names.toString(true).c_str());
 
   // call auto-responder
   autoResponder(read_attr_ids, len/2);
@@ -1400,8 +1434,8 @@ void ZCLFrame::parseConfigAttributes(Z_attribute_list& attr_list) {
     uint16_t attr_id = _payload.get8(i+2);
 
     Z_attribute_list attr_config_response;
-    attr_config_response.addAttribute(F("Status")).setUInt(status);
-    attr_config_response.addAttribute(F("StatusMsg")).setStr(getZigbeeStatusMessage(status).c_str());
+    attr_config_response.addAttributePMEM(PSTR("Status")).setUInt(status);
+    attr_config_response.addAttributePMEM(PSTR("StatusMsg")).setStr(getZigbeeStatusMessage(status).c_str());
 
     const __FlashStringHelper* attr_name = zigbeeFindAttributeById(_cluster_id, attr_id, nullptr, nullptr);
     if (attr_name) {
@@ -1411,7 +1445,7 @@ void ZCLFrame::parseConfigAttributes(Z_attribute_list& attr_list) {
     }
   }
 
-  Z_attribute &attr_1 = attr_list.addAttribute(F("ConfigResponse"));
+  Z_attribute &attr_1 = attr_list.addAttributePMEM(PSTR("ConfigResponse"));
   attr_1.setStrRaw(attr_config_list.toString(true).c_str());
 }
 
@@ -1420,7 +1454,7 @@ void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
   uint32_t i = 0;
   uint32_t len = _payload.len();
 
-  Z_attribute &attr_root = attr_list.addAttribute(F("ReadConfig"));
+  Z_attribute &attr_root = attr_list.addAttributePMEM(PSTR("ReadConfig"));
   Z_attribute_list attr_1;
 
   while (len >= i + 4) {
@@ -1430,7 +1464,7 @@ void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
 
     Z_attribute_list attr_2;
     if (direction) {
-      attr_2.addAttribute(F("DirectionReceived")).setBool(true);
+      attr_2.addAttributePMEM(PSTR("DirectionReceived")).setBool(true);
     }
 
     // find the attribute name
@@ -1449,15 +1483,15 @@ void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
     }
     i += 4;
     if (0 != status) {
-      attr_2.addAttribute(F("Status")).setUInt(status);
-      attr_2.addAttribute(F("StatusMsg")).setStr(getZigbeeStatusMessage(status).c_str());
+      attr_2.addAttributePMEM(PSTR("Status")).setUInt(status);
+      attr_2.addAttributePMEM(PSTR("StatusMsg")).setStr(getZigbeeStatusMessage(status).c_str());
     } else {
       // no error, decode data
       if (direction) {
         // only Timeout period is present
         uint16_t attr_timeout = _payload.get16(i);
         i += 2;
-        attr_2.addAttribute(F("TimeoutPeriod")).setUInt((0xFFFF == attr_timeout) ? -1 : attr_timeout);
+        attr_2.addAttributePMEM(PSTR("TimeoutPeriod")).setUInt((0xFFFF == attr_timeout) ? -1 : attr_timeout);
       } else {
         // direction == 0, we have a data type
         uint8_t attr_type = _payload.get8(i);
@@ -1465,11 +1499,11 @@ void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
         uint16_t attr_min_interval = _payload.get16(i+1);
         uint16_t attr_max_interval = _payload.get16(i+3);
         i += 5;
-        attr_2.addAttribute(F("MinInterval")).setUInt((0xFFFF == attr_min_interval) ? -1 : attr_min_interval);
-        attr_2.addAttribute(F("MaxInterval")).setUInt((0xFFFF == attr_max_interval) ? -1 : attr_max_interval);
+        attr_2.addAttributePMEM(PSTR("MinInterval")).setUInt((0xFFFF == attr_min_interval) ? -1 : attr_min_interval);
+        attr_2.addAttributePMEM(PSTR("MaxInterval")).setUInt((0xFFFF == attr_max_interval) ? -1 : attr_max_interval);
         if (!attr_discrete) {
           // decode Reportable Change
-          Z_attribute &attr_change = attr_2.addAttribute(F("ReportableChange"));
+          Z_attribute &attr_change = attr_2.addAttributePMEM(PSTR("ReportableChange"));
           i += parseSingleAttribute(attr_change, _payload, i, attr_type);
           if ((1 != multiplier) && (0 != multiplier)) {
             float fval = attr_change.getFloat();
@@ -1513,21 +1547,21 @@ void ZCLFrame::parseResponse(void) {
   // "Device"
   char s[12];
   snprintf_P(s, sizeof(s), PSTR("0x%04X"), _srcaddr);
-  attr_list.addAttribute(F(D_JSON_ZIGBEE_DEVICE)).setStr(s);
+  attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_DEVICE)).setStr(s);
   // "Name"
   const char * friendlyName = zigbee_devices.getFriendlyName(_srcaddr);
   if (friendlyName) {
-    attr_list.addAttribute(F(D_JSON_ZIGBEE_NAME)).setStr(friendlyName);
+    attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_NAME)).setStr(friendlyName);
   }
   // "Command"
   snprintf_P(s, sizeof(s), PSTR("%04X!%02X"), _cluster_id, cmd);
-  attr_list.addAttribute(F(D_JSON_ZIGBEE_CMD)).setStr(s);
+  attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_CMD)).setStr(s);
   // "Status"
-  attr_list.addAttribute(F(D_JSON_ZIGBEE_STATUS)).setUInt(status);
+  attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_STATUS)).setUInt(status);
   // "StatusMessage"
-  attr_list.addAttribute(F(D_JSON_ZIGBEE_STATUS_MSG)).setStr(getZigbeeStatusMessage(status).c_str());
+  attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_STATUS_MSG)).setStr(getZigbeeStatusMessage(status).c_str());
   // Add Endpoint
-  attr_list.addAttribute(F(D_CMND_ZIGBEE_ENDPOINT)).setUInt(_srcendpoint);
+  attr_list.addAttributePMEM(PSTR(D_CMND_ZIGBEE_ENDPOINT)).setUInt(_srcendpoint);
   // Add Group if non-zero
   if (_groupaddr) {     // TODO what about group zero
     attr_list.group_id = _groupaddr;
@@ -1551,6 +1585,21 @@ void ZCLFrame::parseClusterSpecificCommand(Z_attribute_list& attr_list) {
     }
   }
 }
+
+// ======================================================================
+// Convert AnalogValue according to the device type
+void ZCLFrame::syntheticAnalogValue(Z_attribute_list &attr_list, class Z_attribute &attr) {
+  const char * modelId_c = zigbee_devices.getModelId(_srcaddr);  // null if unknown
+  String modelId((char*) modelId_c);
+  
+  if (modelId.startsWith(F("lumi.sensor_cube"))) {
+    attr.setKeyId(0x000C, 0xFF55);    // change to AqaraRotate
+  }
+  if (modelId.startsWith(F("lumi.plug"))) {
+    attr.setKeyId(0x0702, 0x0000);    // change to EnergyTotal
+  }
+}
+
 
 // ======================================================================
 // New version of synthetic attribute generation
@@ -1585,11 +1634,11 @@ void ZCLFrame::syntheticAqaraSensor(Z_attribute_list &attr_list, class Z_attribu
           }
         } else if (modelId.startsWith(F("lumi.sensor_smoke"))) {   // gas leak
           if (0x64 == attrid) {
-            attr_list.addAttribute(F("SmokeDensity")).copyVal(attr);
+            attr_list.addAttributePMEM(PSTR("SmokeDensity")).copyVal(attr);
           }
         } else if (modelId.startsWith(F("lumi.sensor_natgas"))) {   // gas leak
           if (0x64 == attrid) {
-            attr_list.addAttribute(F("GasDensity")).copyVal(attr);
+            attr_list.addAttributePMEM(PSTR("GasDensity")).copyVal(attr);
           }
         } else if (modelId.startsWith(F("lumi.sensor_ht")) ||
             modelId.equals(F("lumi.sens")) ||
@@ -1602,6 +1651,14 @@ void ZCLFrame::syntheticAqaraSensor(Z_attribute_list &attr_list, class Z_attribu
             attr_list.addAttribute(0x0405, 0x0000).setUInt(uval32);         // Humidity * 100
           } else if (0x66 == attrid) {
             attr_list.addAttribute(0x0403, 0x0000).setUInt((ival32 + 50) / 100);  // Pressure
+          }
+        } else if (modelId.startsWith(F("lumi.plug"))) {
+          if (0x64 == attrid) {
+            attr_list.addAttribute(0x0600, 0x0000).setInt(uval32);          // Power (on/off)
+          } else if (0x98 == attrid) {
+            attr_list.addAttribute(0x0B04, 0x050B).setInt(ival32);          // Active Power
+          } else if (0x95 == attrid) {
+            attr_list.addAttribute(0x0702, 0x0000).setUInt(uval32);         // EnergyDelivered
           }
         } else {
           translated = false;     // we didn't find a match
@@ -1704,7 +1761,7 @@ void ZCLFrame::syntheticAqaraCubeOrButton(class Z_attribute_list &attr_list, cla
     //     presentValue = x + 128 = 180º flip to side x on top
     //     presentValue = x + 256 = push/slide cube while side x is on top
     //     presentValue = x + 512 = double tap while side x is on top
-  } else if (modelId.startsWith(F("lumi.remote")) || modelId.startsWith(F("lumi.sensor_switch"))) {   // only for Aqara buttons WXKG11LM & WXKG12LM
+  } else if (modelId.startsWith(F("lumi.remote")) || modelId.startsWith(F("lumi.sensor_swit"))) {   // only for Aqara buttons WXKG11LM & WXKG12LM, 'swit' because of #9923
     int32_t val = attr.getInt();
     const __FlashStringHelper *aqara_click = F("click");
     const __FlashStringHelper *aqara_action = F("action");
@@ -1780,7 +1837,7 @@ void ZCLFrame::syntheticAqaraVibration(class Z_attribute_list &attr_list, class 
           int32_t Angle_Y = 0.5f + atanf(Y/sqrtf(x*x+z*z)) * f_180pi;
           int32_t Angle_Z = 0.5f + atanf(Z/sqrtf(x*x+y*y)) * f_180pi;
           snprintf_P(temp, sizeof(temp), "[%i,%i,%i]", Angle_X, Angle_Y, Angle_Z);
-          attr_list.addAttribute(F("AqaraAngles")).setStrRaw(temp);
+          attr_list.addAttributePMEM(PSTR("AqaraAngles")).setStrRaw(temp);
         }
       }
       break;
@@ -2005,19 +2062,21 @@ void Z_Data::toAttributes(Z_attribute_list & attr_list) const {
         case Zenum8:
         case Zmap8:
         case Zbool:
-        case Zuint8:  uval32 = *(uint8_t*)attr_address;   if (uval32 != 0xFF)        data_size = 8;   break;
+        case Zuint8:  uval32 = *(uint8_t*)attr_address;   if (uval32 !=  0x000000FF) data_size = 8;   break;
         case Zmap16:
         case Zenum16:
-        case Zuint16: uval32 = *(uint16_t*)attr_address;  if (uval32 != 0xFFFF)      data_size = 16;  break;
-        case Zuint32: uval32 = *(uint32_t*)attr_address;  if (uval32 != 0xFFFFFFFF)  data_size = 32;  break;
-        case Zint8:   ival32 = *(int8_t*)attr_address;    if (ival32 != -0x80)       data_size = -8;  break;
-        case Zint16:  ival32 = *(int16_t*)attr_address;   if (ival32 != -0x8000)     data_size = -16; break;
+        case Zuint16: uval32 = *(uint16_t*)attr_address;  if (uval32 !=  0x0000FFFF) data_size = 16;  break;
+        case Zuint32: uval32 = *(uint32_t*)attr_address;  if (uval32 !=  0xFFFFFFFF) data_size = 32;  break;
+        case Zint8:   ival32 = *(int8_t*)attr_address;    if (ival32 != -0xFFFFFF80) data_size = -8;  break;
+        case Zint16:  ival32 = *(int16_t*)attr_address;   if (ival32 != -0xFFFF8000) data_size = -16; break;
         case Zint32:  ival32 = *(int32_t*)attr_address;   if (ival32 != -0x80000000) data_size = -32; break;
       }
       if (data_size != 0) {
         Z_attribute & attr = attr_list.addAttribute(conv_name);
 
-        float fval = (data_size > 0) ? uval32 : ival32;
+        float fval;
+        if (data_size > 0) { fval = uval32; }
+        else               { fval = ival32; }
         if ((1 != multiplier) && (0 != multiplier)) {
           if (multiplier > 0) { fval =  fval * multiplier; }
           else                { fval =  fval / (-multiplier); }
