@@ -1950,7 +1950,7 @@ chknext:
             case 11:
               fvar = Energy.daily;
               break;
-                  
+
             default:
               fvar = 99999;
               break;
@@ -3713,6 +3713,7 @@ void StopBeep( TimerHandle_t xTimer ) {
 
 void esp32_beep(int32_t freq ,uint32_t len) {
   if (freq<0) {
+    if (freq <= -64) freq = 0;
     ledcSetup(7, 500, 10);
     ledcAttachPin(-freq, 7);
     ledcWriteTone(7, 0);
@@ -3733,6 +3734,21 @@ void esp32_beep(int32_t freq ,uint32_t len) {
     xTimerChangePeriod( beep_th, ticks, 10);
   }
 }
+
+void esp32_pwm(int32_t value) {
+  if (value < 0) {
+    if (value <= -64) value = 0;
+    ledcSetup(7, 4000, 10);
+    ledcAttachPin(-value, 7);
+    ledcWrite(7, 0);
+  } else {
+    if (value > 1023) {
+      value = 1023;
+    }
+    ledcWrite(7, value);
+  }
+}
+
 #endif // ESP32
 
 //#define IFTHEN_DEBUG
@@ -4145,6 +4161,13 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               float fvar1;
               lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
               esp32_beep(fvar, fvar1);
+              lp++;
+              goto next_line;
+            }
+            else if (!strncmp(lp, "pwm(", 4)) {
+              lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
+              SCRIPT_SKIP_SPACES
+              esp32_pwm(fvar);
               lp++;
               goto next_line;
             }
