@@ -3735,10 +3735,10 @@ void esp32_beep(int32_t freq ,uint32_t len) {
   }
 }
 
-void esp32_pwm(int32_t value) {
+void esp32_pwm(int32_t value, uint32 freq) {
   if (value < 0) {
     if (value <= -64) value = 0;
-    ledcSetup(7, 4000, 10);
+    ledcSetup(7, freq, 10);
     ledcAttachPin(-value, 7);
     ledcWrite(7, 0);
   } else {
@@ -4167,7 +4167,11 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
             else if (!strncmp(lp, "pwm(", 4)) {
               lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
               SCRIPT_SKIP_SPACES
-              esp32_pwm(fvar);
+              float fvar1=4000;
+              if (*lp!=')') {
+                lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
+              }
+              esp32_pwm(fvar, fvar1);
               lp++;
               goto next_line;
             }
