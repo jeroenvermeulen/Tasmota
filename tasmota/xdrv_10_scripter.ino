@@ -3735,7 +3735,10 @@ void esp32_beep(int32_t freq ,uint32_t len) {
   }
 }
 
-void esp32_pwm(int32_t value, uint32 freq) {
+uint8_t pwmpin;
+
+void esp_pwm(int32_t value, uint32 freq) {
+#ifdef ESP32
   if (value < 0) {
     if (value <= -64) value = 0;
     ledcSetup(7, freq, 10);
@@ -3747,9 +3750,23 @@ void esp32_pwm(int32_t value, uint32 freq) {
     }
     ledcWrite(7, value);
   }
+#else
+  if (value < 0) {
+    if (value <= -64) value = 0;
+    pwmpin = -value;
+    pinMode(pwmpin, OUTPUT);
+    analogWriteFreq(freq);
+    analogWrite(pwmpin, 0);
+  } else {
+    if (value > 1023) {
+      value = 1023;
+    }
+    analogWrite(pwmpin,value);
+  }
+#endif // ESP32
 }
 
-#endif // ESP32
+
 
 //#define IFTHEN_DEBUG
 
@@ -4164,6 +4181,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               lp++;
               goto next_line;
             }
+#endif //ESP32
             else if (!strncmp(lp, "pwm(", 4)) {
               lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
               SCRIPT_SKIP_SPACES
@@ -4171,11 +4189,10 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               if (*lp!=')') {
                 lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
               }
-              esp32_pwm(fvar, fvar1);
+              esp_pwm(fvar, fvar1);
               lp++;
               goto next_line;
             }
-#endif //ESP32
             else if (!strncmp(lp, "wcs", 3)) {
               lp+=4;
               // skip one space after cmd
