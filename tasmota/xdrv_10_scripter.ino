@@ -3735,6 +3735,7 @@ void esp32_beep(int32_t freq ,uint32_t len) {
   }
 }
 
+
 uint8_t pwmpin;
 
 void esp_pwm(int32_t value, uint32 freq) {
@@ -4182,6 +4183,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
               goto next_line;
             }
 #endif //ESP32
+
             else if (!strncmp(lp, "pwm(", 4)) {
               lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
               SCRIPT_SKIP_SPACES
