@@ -3734,7 +3734,7 @@ void esp32_beep(int32_t freq ,uint32_t len) {
     xTimerChangePeriod( beep_th, ticks, 10);
   }
 }
-
+#endif // ESP32
 
 uint8_t pwmpin;
 
