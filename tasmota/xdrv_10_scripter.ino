@@ -7013,7 +7013,7 @@ exgc:
                   WSContentSend_PD("['");
                   char lbl[16];
                   if (todflg>=0) {
-                    sprintf(lbl, "%d", todflg / divflg);
+                    sprintf(lbl, "%d:%02d", todflg / divflg, (todflg % divflg) * (60 / divflg) );
                     todflg++;
                     if (todflg >= entries) {
                       todflg = 0;
