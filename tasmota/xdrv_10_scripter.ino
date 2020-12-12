@@ -158,6 +158,45 @@ void Script_ticker4_end(void) {
 }
 #endif
 
+// EEPROM MACROS
+// i2c eeprom
+
+#if defined(ALT_EEPROM) && !defined(ESP32)
+#undef EEP_WRITE
+#undef EEP_READ
+#undef EEP_INIT
+#define EEP_WRITE(A,B,C) alt_eeprom_writeBytes(A, B, (uint8_t*)C);
+#define EEP_READ(A,B,C) alt_eeprom_readBytes(A, B, (uint8_t*)C);
+#define EEP_INIT(A) alt_eeprom_init(A)
+uint32_t eeprom_block;
+
+// these support only one 4 k block below EEPROM this steals 4k of application area
+uint32_t alt_eeprom_init(uint32_t size) {
+    //EEPROM.begin(size);
+    eeprom_block = (uint32_t)&_FS_end - 0x40200000 - SPI_FLASH_SEC_SIZE;
+    return 1;
+}
+
+void alt_eeprom_writeBytes(uint32_t adr, uint32_t len, uint8_t *buf) {
+  uint32_t *lwp=(uint32_t*)buf;
+  ESP.flashEraseSector(eeprom_block / SPI_FLASH_SEC_SIZE);
+  ESP.flashWrite(eeprom_block , lwp, SPI_FLASH_SEC_SIZE);
+}
+
+void alt_eeprom_readBytes(uint32_t adr, uint32_t len, uint8_t *buf) {
+  uint32_t *lwp=(uint32_t*)buf;
+  ESP.flashRead(eeprom_block , lwp, SPI_FLASH_SEC_SIZE);
+}
+#else
+#undef EEP_WRITE
+#undef EEP_READ
+#undef EEP_INIT
+#define EEP_WRITE(A,B,C) eeprom_writeBytes(A, B, (uint8_t*)C);
+#define EEP_READ(A,B,C) eeprom_readBytes(A, B, (uint8_t*)C);
+#define EEP_INIT(A) eeprom_init(A)
+#endif // ALT_EEPROM
+
+
 
 #if defined(LITTLEFS_SCRIPT_SIZE) || (USE_SCRIPT_FATFS==-1)
 #ifdef ESP32
@@ -516,10 +555,7 @@ void RulesTeleperiod(void) {
   if (bitRead(Settings.rule_enabled, 0) && TasmotaGlobal.mqtt_data[0]) Run_Scripter(">T", 2, TasmotaGlobal.mqtt_data);
 }
 
-// EEPROM MACROS
-// i2c eeprom
-#define EEP_WRITE(A,B,C) eeprom_writeBytes(A, B, (uint8_t*)C);
-#define EEP_READ(A,B,C) eeprom_readBytes(A, B, (uint8_t*)C);
+
 
 
 #define SCRIPT_SKIP_SPACES while (*lp==' ' || *lp=='\t') lp++;
@@ -7418,8 +7454,8 @@ bool Xdrv10(uint8_t function)
 #endif //USE_BUTTON_EVENT
 
 #ifdef EEP_SCRIPT_SIZE
-      if (eeprom_init(EEP_SCRIPT_SIZE)) {
-          // found 32kb eeprom
+      if (EEP_INIT(EEP_SCRIPT_SIZE)) {
+          // found 32kb eeprom,
           char *script;
           script = (char*)calloc(EEP_SCRIPT_SIZE + 4, 1);
           if (!script) break;
