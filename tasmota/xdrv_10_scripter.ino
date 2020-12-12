@@ -108,7 +108,7 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #pragma message "script 24c256 file option used"
 #else
 //#warning "EEP_SCRIPT_SIZE also needs USE_24C256"
-#if EEP_SCRIPT_SIZE==4096
+#if EEP_SCRIPT_SIZE==SPI_FLASH_SEC_SIZE
 #pragma message "internal eeprom script buffer used"
 #else
 #pragma message "internal compressed eeprom script buffer used"
@@ -5185,7 +5185,7 @@ void SaveScript(void) {
 #else
     char *ucs;
     ucs = (char*)calloc(SPI_FLASH_SEC_SIZE + 4, 1);
-    if (!script_compress(ucs)) {
+    if (!script_compress(ucs,EEP_SCRIPT_SIZE-1)) {
       EEP_WRITE(0, EEP_SCRIPT_SIZE, ucs);
     }
     if (ucs) free(ucs);
@@ -5272,11 +5272,11 @@ void ScriptSaveSettings(void) {
 }
 
 //
-uint32_t script_compress(char *dest) {
+uint32_t script_compress(char *dest, uint32_t size) {
   //AddLog_P(LOG_LEVEL_INFO,PSTR("in string: %s len = %d"),glob_script_mem.script_ram,strlen(glob_script_mem.script_ram));
-  uint32_t len_compressed = SCRIPT_COMPRESS(glob_script_mem.script_ram, strlen(glob_script_mem.script_ram), dest, MAX_SCRIPT_SIZE-1);
+  uint32_t len_compressed = SCRIPT_COMPRESS(glob_script_mem.script_ram, strlen(glob_script_mem.script_ram), dest, size);
   if (len_compressed > 0) {
-    Settings.rules[0][len_compressed] = 0;
+    dest[len_compressed] = 0;
     AddLog_P(LOG_LEVEL_INFO,PSTR("script compressed to %d bytes = %d %%"),len_compressed,len_compressed * 100 / strlen(glob_script_mem.script_ram));
     return 0;
   } else {
@@ -5300,7 +5300,7 @@ void SaveScriptEnd(void) {
   }
 
 #ifdef USE_SCRIPT_COMPRESSION
-  script_compress(Settings.rules[0]);
+  script_compress(Settings.rules[0],MAX_SCRIPT_SIZE-1);
 #endif // USE_SCRIPT_COMPRESSION
 
   if (bitRead(Settings.rule_enabled, 0)) {
