@@ -119,7 +119,7 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #endif // USE_UNISHOX_COMPRESSION
 
 
-#ifdef USE_SCRIPT_COMPRESSION
+//#ifdef USE_SCRIPT_COMPRESSION
 #include <unishox.h>
 
 #define SCRIPT_COMPRESS compressor.unishox_compress
@@ -127,7 +127,8 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #ifndef UNISHOXRSIZE
 #define UNISHOXRSIZE 2560
 #endif
-#endif // USE_SCRIPT_COMPRESSION
+
+//#endif // USE_SCRIPT_COMPRESSION
 
 #ifndef STASK_PRIO
 #define STASK_PRIO 1
@@ -5175,7 +5176,16 @@ void SaveScript(void) {
 
 #ifdef EEP_SCRIPT_SIZE
   if (glob_script_mem.flags&1) {
+#if EEP_SCRIPT_SIZE==SPI_FLASH_SEC_SIZE
     EEP_WRITE(0, EEP_SCRIPT_SIZE, glob_script_mem.script_ram);
+#else
+    char *ucs;
+    ucs = (char*)calloc(SPI_FLASH_SEC_SIZE + 4, 1);
+    if (!script_compress(ucs)) {
+      EEP_WRITE(0, EEP_SCRIPT_SIZE, ucs);
+    }
+    if (ucs) free(ucs);
+#endif
   }
 #endif // EEP_SCRIPT_SIZE
 
@@ -5257,6 +5267,21 @@ void ScriptSaveSettings(void) {
   SaveScriptEnd();
 }
 
+//
+uint32_t script_compress(char *dest) {
+  //AddLog_P(LOG_LEVEL_INFO,PSTR("in string: %s len = %d"),glob_script_mem.script_ram,strlen(glob_script_mem.script_ram));
+  uint32_t len_compressed = SCRIPT_COMPRESS(glob_script_mem.script_ram, strlen(glob_script_mem.script_ram), dest, MAX_SCRIPT_SIZE-1);
+  if (len_compressed > 0) {
+    Settings.rules[0][len_compressed] = 0;
+    AddLog_P(LOG_LEVEL_INFO,PSTR("script compressed to %d bytes = %d %%"),len_compressed,len_compressed * 100 / strlen(glob_script_mem.script_ram));
+    return 0;
+  } else {
+    AddLog_P(LOG_LEVEL_INFO, PSTR("script compress error: %d"), len_compressed);
+    return 1;
+  }
+}
+//#endif // USE_SCRIPT_COMPRESSION
+
 void SaveScriptEnd(void) {
 
 #ifdef USE_SCRIPT_GLOBVARS
@@ -5271,19 +5296,10 @@ void SaveScriptEnd(void) {
   }
 
 #ifdef USE_SCRIPT_COMPRESSION
-  //AddLog_P(LOG_LEVEL_INFO,PSTR("in string: %s len = %d"),glob_script_mem.script_ram,strlen(glob_script_mem.script_ram));
-  uint32_t len_compressed = SCRIPT_COMPRESS(glob_script_mem.script_ram, strlen(glob_script_mem.script_ram), Settings.rules[0], MAX_SCRIPT_SIZE-1);
-  if (len_compressed > 0) {
-    Settings.rules[0][len_compressed] = 0;
-    AddLog_P(LOG_LEVEL_INFO,PSTR("script compressed to %d bytes = %d %%"),len_compressed,len_compressed * 100 / strlen(glob_script_mem.script_ram));
-  } else {
-    AddLog_P(LOG_LEVEL_INFO, PSTR("script compress error: %d"), len_compressed);
-  }
+  script_compress(Settings.rules[0]);
 #endif // USE_SCRIPT_COMPRESSION
 
   if (bitRead(Settings.rule_enabled, 0)) {
-
-
 
     int16_t res = Init_Scripter();
     if (res) {
@@ -7457,6 +7473,7 @@ bool Xdrv10(uint8_t function)
       if (EEP_INIT(EEP_SCRIPT_SIZE)) {
           // found 32kb eeprom,
           char *script;
+#if EEP_SCRIPT_SIZE==SPI_FLASH_SEC_SIZE
           script = (char*)calloc(EEP_SCRIPT_SIZE + 4, 1);
           if (!script) break;
           glob_script_mem.script_ram = script;
@@ -7466,6 +7483,28 @@ bool Xdrv10(uint8_t function)
             memset(script, EEP_SCRIPT_SIZE, 0);
           }
           script[EEP_SCRIPT_SIZE - 1] = 0;
+#else
+          char *ucs;
+          ucs = (char*)calloc(SPI_FLASH_SEC_SIZE + 4, 1);
+          if (!ucs) break;
+          EEP_READ(0, SPI_FLASH_SEC_SIZE, ucs);
+          if (*ucs==0xff) {
+            memset(ucs, SPI_FLASH_SEC_SIZE, 0);
+          }
+          ucs[SPI_FLASH_SEC_SIZE - 1] = 0;
+
+          script = (char*)calloc(EEP_SCRIPT_SIZE + 4, 1);
+          if (!script) break;
+          glob_script_mem.script_ram = script;
+          glob_script_mem.script_size = EEP_SCRIPT_SIZE;
+
+          int32_t len_decompressed;
+          len_decompressed = SCRIPT_DECOMPRESS(ucs, strlen(ucs), glob_script_mem.script_ram, glob_script_mem.script_size);
+          if (len_decompressed>0) glob_script_mem.script_ram[len_decompressed] = 0;
+
+          if (ucs) free(ucs);
+
+#endif
           // use rules storage for permanent vars
           glob_script_mem.script_pram = (uint8_t*)Settings.rules[0];
           glob_script_mem.script_pram_size = MAX_SCRIPT_SIZE;
