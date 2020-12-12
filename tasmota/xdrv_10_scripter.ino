@@ -108,7 +108,11 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #pragma message "script 24c256 file option used"
 #else
 //#warning "EEP_SCRIPT_SIZE also needs USE_24C256"
+#if EEP_SCRIPT_SIZE==4096
 #pragma message "internal eeprom script buffer used"
+#else
+#pragma message "internal compressed eeprom script buffer used"
+#endif
 //#define USE_24C256
 #endif
 #endif // EEP_SCRIPT_SIZE
