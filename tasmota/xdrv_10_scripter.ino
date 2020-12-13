@@ -173,6 +173,12 @@ void Script_ticker4_end(void) {
 #define EEP_WRITE(A,B,C) alt_eeprom_writeBytes(A, B, (uint8_t*)C);
 #define EEP_READ(A,B,C) alt_eeprom_readBytes(A, B, (uint8_t*)C);
 #define EEP_INIT(A) alt_eeprom_init(A)
+
+#if EEP_SCRIPT_SIZE>6500
+#undef EEP_SCRIPT_SIZE
+#define EEP_SCRIPT_SIZE 6500
+#endif
+
 uint32_t eeprom_block;
 
 // these support only one 4 k block below EEPROM this steals 4k of application area
@@ -3777,33 +3783,38 @@ void esp32_beep(int32_t freq ,uint32_t len) {
 }
 #endif // ESP32
 
-uint8_t pwmpin;
+uint8_t pwmpin[5];
 
-void esp_pwm(int32_t value, uint32 freq) {
+void esp_pwm(int32_t value, uint32 freq, uint32_t channel) {
+  if (channel < 1 || channel > 3) channel = 1;
 #ifdef ESP32
+  channel+=7;
   if (value < 0) {
     if (value <= -64) value = 0;
-    ledcSetup(7, freq, 10);
-    ledcAttachPin(-value, 7);
-    ledcWrite(7, 0);
+    // set range to 10 bit
+    ledcSetup(chaannel, freq, 10);
+    ledcAttachPin(-value, channel);
+    ledcWrite(channel, 0);
   } else {
     if (value > 1023) {
       value = 1023;
     }
-    ledcWrite(7, value);
+    ledcWrite(channel, value);
   }
 #else
+  // esp8266 default to range 0-1023
+  channel-=1;
   if (value < 0) {
     if (value <= -64) value = 0;
-    pwmpin = -value;
-    pinMode(pwmpin, OUTPUT);
+    pwmpin[channel] = -value;
+    pinMode(pwmpin[channel], OUTPUT);
     analogWriteFreq(freq);
-    analogWrite(pwmpin, 0);
+    analogWrite(pwmpin[channel], 0);
   } else {
     if (value > 1023) {
       value = 1023;
     }
-    analogWrite(pwmpin,value);
+    analogWrite(pwmpin[channel],value);
   }
 #endif // ESP32
 }
@@ -4225,14 +4236,29 @@ int16_t Run_script_sub(const char *type, int8_t tlen, JsonParserObject *jo) {
             }
 #endif //ESP32
 
-            else if (!strncmp(lp, "pwm(", 4)) {
-              lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
+            else if (!strncmp(lp, "pwm", 3)) {
+              lp += 3;
+              uint8_t channel = 1;
+              if (*(lp+1)=='(') {
+                channel = *lp & 7;
+                if (channel > 5) {
+                  channel = 5;
+                }
+                lp += 2;
+              } else {
+                if (*lp=='(') {
+                  lp++;
+                } else {
+                  goto next_line;
+                }
+              }
+              lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
               SCRIPT_SKIP_SPACES
               float fvar1=4000;
               if (*lp!=')') {
                 lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
               }
-              esp_pwm(fvar, fvar1);
+              esp_pwm(fvar, fvar1, channel);
               lp++;
               goto next_line;
             }
