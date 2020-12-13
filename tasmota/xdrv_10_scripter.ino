@@ -3792,7 +3792,7 @@ void esp_pwm(int32_t value, uint32 freq, uint32_t channel) {
   if (value < 0) {
     if (value <= -64) value = 0;
     // set range to 10 bit
-    ledcSetup(chaannel, freq, 10);
+    ledcSetup(channel, freq, 10);
     ledcAttachPin(-value, channel);
     ledcWrite(channel, 0);
   } else {
