@@ -143,7 +143,7 @@ ILI9341_2::ILI9341_2(int8_t cs, int8_t mosi, int8_t miso, int8_t sclk, int8_t re
   _res = res;
   _dc = dc;
   _bp = bp;
-  _hwspi = 0;
+  _hwspi = 1;
 }
 
 // special init for ILI9342
