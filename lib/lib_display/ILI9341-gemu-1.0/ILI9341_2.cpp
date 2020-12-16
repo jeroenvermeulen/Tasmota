@@ -171,8 +171,6 @@ void ILI9341_2::writecmd(uint8_t d) {
 
 void ILI9341_2::init(uint16_t width, uint16_t height) {
   //sspi2 = SPISettings(2500000, MSBFIRST, SPI_MODE3);
-//_width=width;
-//_height=height;
 
   if (_hwspi==2) {
     iwidth=ILI9341_2_TFTWIDTH;
@@ -184,7 +182,7 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
 
 #ifdef ILI9341_2_HWSPI
 
-  sspi2 = SPISettings(4000000, MSBFIRST, SPI_MODE0);
+  sspi2 = SPISettings(40000000, MSBFIRST, SPI_MODE0);
 
   if (_hwspi==2) {
     spi2=&SPI;
