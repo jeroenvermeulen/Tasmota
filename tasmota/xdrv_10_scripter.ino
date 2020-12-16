@@ -3161,7 +3161,7 @@ chknext:
           goto exit;
         }
 #endif // USE_TTGO_WATCH
-#if defined(USE_TTGO_WATCH) && defined(USE_FT5206)
+#if defined(USE_FT5206)
         if (!strncmp(vname, "wtch(", 5)) {
           lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, 0);
           fvar = Touch_Status(fvar);

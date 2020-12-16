@@ -42,6 +42,12 @@ extern uint8_t *buffer;
 extern uint8_t color_type;
 ILI9341_2 *ili9341_2;
 
+#ifdef USE_FT5206
+#include <FT5206.h>
+#undef FT6336_address
+#define FT6336_address 0x38
+uint8_t ili9342_ctouch_counter = 0;
+#endif // USE_FT5206
 
 
 /*********************************************************************************************/
@@ -95,6 +101,17 @@ void ILI9341_2_InitDriver()
 
     color_type = COLOR_COLOR;
 
+#ifdef ESP32
+#ifdef USE_FT5206
+        // start digitizer with fixed adress and pins for esp32
+        #define SDA_2 21
+        #define SCL_2 22
+        Wire1.begin(SDA_2, SCL_2, 400000);
+        Touch_Init(Wire1);
+#endif // USE_FT5206
+#endif // ESP32
+
+
   }
 }
 
@@ -105,6 +122,48 @@ void ili9342_bpwr(uint8_t on) {
   core2_disp_pwr(on);
 #endif
 }
+
+#ifdef ESP32
+#ifdef USE_FT5206
+#ifdef USE_TOUCH_BUTTONS
+
+void ili9342_RotConvert(int16_t *x, int16_t *y) {
+int16_t temp;
+  if (renderer) {
+    uint8_t rot=renderer->getRotation();
+    switch (rot) {
+      case 0:
+        break;
+      case 1:
+        temp=*y;
+        *y=renderer->height()-*x;
+        *x=temp;
+        break;
+      case 2:
+        *x=renderer->width()-*x;
+        *y=renderer->height()-*y;
+        break;
+      case 3:
+        temp=*y;
+        *y=*x;
+        *x=renderer->width()-temp;
+        break;
+    }
+  }
+}
+
+// check digitizer hit
+void ili9342_CheckTouch() {
+ili9342_ctouch_counter++;
+  if (2 == ili9342_ctouch_counter) {
+    // every 100 ms should be enough
+    ili9342_ctouch_counter = 0;
+    Touch_Check(ili9342_RotConvert);
+  }
+}
+#endif // USE_TOUCH_BUTTONS
+#endif // USE_FT5206
+#endif // ESP32
 
 
 /*********************************************************************************************/
@@ -123,6 +182,15 @@ bool Xdsp13(uint8_t function)
         case FUNC_DISPLAY_MODEL:
           result = true;
           break;
+#ifdef USE_FT5206
+#ifdef USE_TOUCH_BUTTONS
+        case FUNC_DISPLAY_EVERY_50_MSECOND:
+          if (FT5206_found) {
+            ili9342_CheckTouch();
+          }
+          break;
+#endif // USE_TOUCH_BUTTONS
+#endif // USE_FT5206
     }
   }
   return result;
