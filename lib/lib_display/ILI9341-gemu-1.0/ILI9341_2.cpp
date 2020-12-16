@@ -454,7 +454,8 @@ void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t co
 
   ILI9341_2_CS_LOW
 
-  setAddrWindow(x, y, w-1, h-1);
+  //setAddrWindow(x, y, w-1, h-1);
+  setAddrWindow(x, y, w, h);
 
   for (y=h; y>0; y--) {
     for (x=w; x>0; x--) {
