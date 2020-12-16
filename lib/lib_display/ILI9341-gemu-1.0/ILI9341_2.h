@@ -175,6 +175,8 @@ class ILI9341_2 : public Renderer {
   int8_t _dc;
   int8_t _bp;
   int8_t _hwspi;
+  uint16_t iwidth;
+  uint16_t iheight;
 };
 
 #endif

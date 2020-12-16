@@ -69,6 +69,7 @@
 #endif
 
 
+
 const uint16_t ili9341_2_colors[]={ILI9341_2_BLACK,ILI9341_2_WHITE,ILI9341_2_RED,ILI9341_2_GREEN,ILI9341_2_BLUE,ILI9341_2_CYAN,ILI9341_2_MAGENTA,\
   ILI9341_2_YELLOW,ILI9341_2_NAVY,ILI9341_2_DARKGREEN,ILI9341_2_DARKCYAN,ILI9341_2_MAROON,ILI9341_2_PURPLE,ILI9341_2_OLIVE,\
 ILI9341_2_LIGHTGREY,ILI9341_2_DARKGREY,ILI9341_2_ORANGE,ILI9341_2_GREENYELLOW,ILI9341_2_PINK};
@@ -173,6 +174,13 @@ void ILI9341_2::init(uint16_t width, uint16_t height) {
 //_width=width;
 //_height=height;
 
+  if (_hwspi==2) {
+    iwidth=ILI9341_2_TFTWIDTH;
+    iheight=ILI9341_2_TFTHEIGHT;
+  } else {
+    iwidth=ILI9341_2_TFTHEIGHT;
+    iheight=ILI9341_2_TFTWIDTH;
+  }
 
 #ifdef ILI9341_2_HWSPI
 
@@ -323,23 +331,23 @@ void ILI9341_2::setRotation(uint8_t m) {
     switch (rotation) {
         case 0:
             m = (MADCTL_2_MX | MADCTL_2_BGR);
-            _width  = ILI9341_2_TFTWIDTH;
-            _height = ILI9341_2_TFTHEIGHT;
+            _width  = iwidth;
+            _height = iheight;
             break;
         case 1:
             m = (MADCTL_2_MV | MADCTL_2_BGR);
-            _width  = ILI9341_2_TFTHEIGHT;
-            _height = ILI9341_2_TFTWIDTH;
+            _width  = iheight;
+            _height = iwidth;
             break;
         case 2:
             m = (MADCTL_2_MY | MADCTL_2_BGR);
-            _width  = ILI9341_2_TFTWIDTH;
-            _height = ILI9341_2_TFTHEIGHT;
+            _width  = iwidth;
+            _height = iheight;
             break;
         case 3:
             m = (MADCTL_2_MX | MADCTL_2_MY | MADCTL_2_MV | MADCTL_2_BGR);
-            _width  = ILI9341_2_TFTHEIGHT;
-            _height = ILI9341_2_TFTWIDTH;
+            _width  = iheight;
+            _height = iwidth;
             break;
     }
 
@@ -357,23 +365,23 @@ void ILI9341_2::setRotation(uint8_t m) {
     switch (rotation) {
         case 0:
             m = (MADCTL_BGR);
-            _width  = ILI9341_2_TFTWIDTH;
-            _height = ILI9341_2_TFTHEIGHT;
+            _width  = iwidth;
+            _height = iheight;
             break;
         case 1:
             m = (MADCTL_MV | MADCTL_BGR);
-            _width  = ILI9341_2_TFTHEIGHT;
-            _height = ILI9341_2_TFTWIDTH;
+            _width  = iheight;
+            _height = iwidth;
             break;
         case 2:
             m = (MADCTL_MY | MADCTL_BGR);
-            _width  = ILI9341_2_TFTWIDTH;
-            _height = ILI9341_2_TFTHEIGHT;
+            _width  = iwidth;
+            _height = iheight;
             break;
         case 3:
             m = (MADCTL_MX | MADCTL_MY | MADCTL_MV | MADCTL_BGR);
-            _width  = ILI9341_2_TFTHEIGHT;
-            _height = ILI9341_2_TFTWIDTH;
+            _width  = iheight;
+            _height = iwidth;
             break;
     }
   }
