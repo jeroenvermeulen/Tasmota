@@ -20,7 +20,7 @@
 //#ifdef USE_SPI
 #ifdef USE_SPI
 #ifdef USE_DISPLAY
-#ifdef USE_DISPLAY_ILI9341_2
+#if (defined(USE_DISPLAY_ILI9341_2) || defined(USE_DISPLAY_ILI9342))
 
 #define XDSP_13                13
 
@@ -42,9 +42,6 @@ extern uint8_t *buffer;
 extern uint8_t color_type;
 ILI9341_2 *ili9341_2;
 
-
-#undef BACKPLANE_PIN
-#define BACKPLANE_PIN 4
 
 /*********************************************************************************************/
 
@@ -70,13 +67,17 @@ void ILI9341_2_InitDriver()
     fg_color = ILI9341_2_WHITE;
     bg_color = ILI9341_2_BLACK;
 
-
+#ifdef USE_M5STACK_CORE2
+    ili9341_2  = new ILI9341_2(5, -2, 15, -2);
+#else
     // init renderer, may use hardware spi, however we use SSPI defintion because SD card uses SPI definition  (2 spi busses)
     if (PinUsed(GPIO_SSPI_CS) && PinUsed(GPIO_OLED_RESET) && PinUsed(GPIO_BACKLIGHT) && PinUsed(GPIO_SSPI_MOSI) && PinUsed(GPIO_SSPI_MISO) && PinUsed(GPIO_SSPI_SCLK) && PinUsed(GPIO_SSPI_DC)) {
         ili9341_2  = new ILI9341_2(Pin(GPIO_SSPI_CS), Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_MISO), Pin(GPIO_SSPI_SCLK), Pin(GPIO_OLED_RESET), Pin(GPIO_SSPI_DC), Pin(GPIO_BACKLIGHT));
     } else {
       return;
     }
+#endif
+
     ili9341_2->init(Settings.display_width,Settings.display_height);
     renderer = ili9341_2;
     renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
@@ -94,6 +95,15 @@ void ILI9341_2_InitDriver()
 
   }
 }
+
+void core2_disp_pwr(uint8_t on);
+
+void ili9342_bpwr(uint8_t on) {
+#ifdef USE_M5STACK_CORE2
+  core2_disp_pwr(on);
+#endif
+}
+
 
 /*********************************************************************************************/
 /*********************************************************************************************\

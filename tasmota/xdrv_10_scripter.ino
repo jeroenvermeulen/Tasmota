@@ -2667,7 +2667,7 @@ chknext:
           len++;
           goto exit;
         }
-#if  defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH))
+#if  defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2))
         if (!strncmp(vname, "pl(", 3)) {
           char path[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 3, OPER_EQU, path, 0);
@@ -2860,7 +2860,7 @@ chknext:
           len = 0;
           goto strexit;
         }
-#if  defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH))
+#if  defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2))
         if (!strncmp(vname, "say(", 4)) {
           char text[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, text, 0);
@@ -7550,7 +7550,7 @@ bool Xdrv10(uint8_t function)
       // fs on SD card
 #ifdef ESP32
       if (PinUsed(GPIO_SPI_MOSI) && PinUsed(GPIO_SPI_MISO) && PinUsed(GPIO_SPI_CLK)) {
-          SPI.begin(Pin(GPIO_SPI_CLK),Pin(GPIO_SPI_MISO),Pin(GPIO_SPI_MOSI), -1);
+          SPI.begin(Pin(GPIO_SPI_CLK), Pin(GPIO_SPI_MISO), Pin(GPIO_SPI_MOSI), -1);
       }
 #endif // ESP32
       fsp = &SD;

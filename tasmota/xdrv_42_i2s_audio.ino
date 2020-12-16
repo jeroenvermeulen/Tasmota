@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if  (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH))
+#if  (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2))
 #include "AudioFileSourcePROGMEM.h"
 #include "AudioFileSourceID3.h"
 #include "AudioGeneratorMP3.h"
@@ -31,17 +31,31 @@
 #include "AudioFileSourceBuffer.h"
 #include "AudioGeneratorAAC.h"
 
+#undef AUDIO_PWR_ON
+#undef AUDIO_PWR_OFF
+#define AUDIO_PWR_ON
+#define AUDIO_PWR_OFF
+
 #ifdef USE_TTGO_WATCH
-#undef TTGO_PWR_ON
-#undef TTGO_PWR_OFF
-#define TTGO_PWR_ON TTGO_audio_power(true);
-#define TTGO_PWR_OFF TTGO_audio_power(false);
-#else
-#undef TTGO_PWR_ON
-#undef TTGO_PWR_OFF
-#define TTGO_PWR_ON
-#define TTGO_PWR_OFF
+#undef AUDIO_PWR_ON
+#undef AUDIO_PWR_OFF
+#define AUDIO_PWR_ON TTGO_audio_power(true);
+#define AUDIO_PWR_OFF TTGO_audio_power(false);
 #endif // USE_TTGO_WATCH
+
+#ifdef USE_M5STACK_CORE2
+#undef AUDIO_PWR_ON
+#undef AUDIO_PWR_OFF
+#define AUDIO_PWR_ON CORE2_audio_power(true);
+#define AUDIO_PWR_OFF CORE2_audio_power(false);
+#undef DAC_IIS_BCK
+#undef DAC_IIS_WS
+#undef DAC_IIS_DOUT
+#define DAC_IIS_BCK       12
+#define DAC_IIS_WS        0
+#define DAC_IIS_DOUT      2
+#endif // USE_M5STACK_CORE2
+
 
 #define EXTERNAL_DAC_PLAY   1
 
@@ -82,25 +96,29 @@ AudioGeneratorTalkie *talkie = nullptr;
 
 //! MAX98357A + INMP441 DOUBLE I2S BOARD
 #ifdef ESP8266
-#undef TWATCH_DAC_IIS_BCK
-#undef TWATCH_DAC_IIS_WS
-#undef TWATCH_DAC_IIS_DOUT
-#define TWATCH_DAC_IIS_BCK       15
-#define TWATCH_DAC_IIS_WS        2
-#define TWATCH_DAC_IIS_DOUT      3
+#undef DAC_IIS_BCK
+#undef DAC_IIS_WS
+#undef DAC_IIS_DOUT
+#define DAC_IIS_BCK       15
+#define DAC_IIS_WS        2
+#define DAC_IIS_DOUT      3
 #endif  // ESP8266
+
+// defaults to TTGO WATCH
 #ifdef ESP32
-#ifndef TWATCH_DAC_IIS_BCK
-#undef TWATCH_DAC_IIS_BCK
-#define TWATCH_DAC_IIS_BCK       26
+#ifndef DAC_IIS_BCK
+#undef DAC_IIS_BCK
+#define DAC_IIS_BCK       26
 #endif
-#ifndef TWATCH_DAC_IIS_WS
-#undef TWATCH_DAC_IIS_WS
-#define TWATCH_DAC_IIS_WS        25
+
+#ifndef DAC_IIS_WS
+#undef DAC_IIS_WS
+#define DAC_IIS_WS        25
 #endif
-#ifndef TWATCH_DAC_IIS_DOUT
-#undef TWATCH_DAC_IIS_DOUT
-#define TWATCH_DAC_IIS_DOUT      33
+
+#ifndef DAC_IIS_DOUT
+#undef DAC_IIS_DOUT
+#define DAC_IIS_DOUT      33
 #endif
 #endif  // ESP32
 
@@ -147,7 +165,7 @@ uint8_t spPAUSE1[]    PROGMEM = {0x00,0x00,0x00,0x00,0xFF,0x0F};
 void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) ;
 
 void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
-  TTGO_PWR_ON
+  AUDIO_PWR_ON
   talkie = new AudioGeneratorTalkie();
   talkie->begin(nullptr, out);
 
@@ -198,7 +216,7 @@ void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
   }
   delete talkie;
   out->stop();
-  TTGO_PWR_OFF
+  AUDIO_PWR_OFF
 }
 #endif
 
@@ -210,7 +228,7 @@ void I2S_Init(void) {
 #if EXTERNAL_DAC_PLAY
     out = new AudioOutputI2S();
 #ifdef ESP32
-    out->SetPinout(TWATCH_DAC_IIS_BCK, TWATCH_DAC_IIS_WS, TWATCH_DAC_IIS_DOUT);
+    out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
 #endif  // ESP32
 #else
     out = new AudioOutputI2S(0, 1);
@@ -286,7 +304,7 @@ void StatusCallback(void *cbData, int code, const char *string) {
 
 void Webradio(const char *url) {
   if (decoder || mp3) return;
-  TTGO_PWR_ON
+  AUDIO_PWR_ON
   ifile = new AudioFileSourceICYStream(url);
   ifile->RegisterMetadataCB(MDCallback, NULL);
   buff = new AudioFileSourceBuffer(ifile, preallocateBuffer, preallocateBufferSize);
@@ -338,7 +356,7 @@ void StopPlaying() {
     delete ifile;
     ifile = NULL;
   }
-  TTGO_PWR_OFF
+  AUDIO_PWR_OFF
 }
 
 void Cmd_WebRadio(void) {
@@ -372,7 +390,7 @@ void Play_mp3(const char *path) {
 
   bool I2S_Task;
 
-  TTGO_PWR_ON
+  AUDIO_PWR_ON
   if (*path=='+') {
     I2S_Task = true;
     path++;
@@ -411,13 +429,13 @@ void mp3_delete(void) {
   delete id3;
   delete mp3;
   mp3=nullptr;
-  TTGO_PWR_OFF
+  AUDIO_PWR_OFF
 }
 #endif // ESP32
 
 void Say(char *text) {
 
-  TTGO_PWR_ON
+  AUDIO_PWR_ON
 
   out->begin();
   ESP8266SAM *sam = new ESP8266SAM;
@@ -425,7 +443,7 @@ void Say(char *text) {
   delete sam;
   out->stop();
 
-  TTGO_PWR_OFF
+  AUDIO_PWR_OFF
 }
 
 
