@@ -43,6 +43,7 @@ extern uint8_t color_type;
 ILI9341_2 *ili9341_2;
 
 
+
 /*********************************************************************************************/
 
 void ILI9341_2_InitDriver()
@@ -50,6 +51,7 @@ void ILI9341_2_InitDriver()
   if (!Settings.display_model) {
     Settings.display_model = XDSP_13;
   }
+
 
   if (XDSP_13 == Settings.display_model) {
 

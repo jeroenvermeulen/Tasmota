@@ -23,7 +23,7 @@
 #include <SPI.h>
 
 #define ILI9341_2_TFTWIDTH  320
-#define ILI9341_2_TFTHEIGHT 480
+#define ILI9341_2_TFTHEIGHT 240
 
 #define ILI9341_2_NOP        0x00     ///< No-op register
 #define ILI9341_2_SWRESET    0x01     ///< Software reset register
