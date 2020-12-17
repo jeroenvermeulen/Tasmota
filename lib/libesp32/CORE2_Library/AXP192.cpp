@@ -49,6 +49,7 @@ void AXP192::begin(void)
 #ifdef AXP192_DEBUG
     Serial.printf("axp: vibrator voltage preset to 2v\n");
 #endif
+
     SetLDOEnable(2, true);
     SetDCDC3(true); // LCD backlight
     SetLed(true);

@@ -17,6 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* remaining work:
+
+i2s microphone, at least as loudness sensor
+rtc use after reboot, sync with internet on regular intervals.
+
+*/
+
 #ifdef ESP32
 #ifdef USE_M5STACK_CORE2
 
@@ -144,6 +151,15 @@ void CORE2_DoShutdown(void) {
   core2_globs.Axp.PowerOff();
 }
 
+float core2_setaxppin(uint32_t pin, uint32_t val) {
+  if (pin==0) {
+    core2_globs.Axp.SetLed(val);
+  } else {
+    core2_globs.Axp.SetLDOEnable(3, val);
+  }
+  return 0;
+}
+
 void core2_disp_pwr(uint8_t on) {
   core2_globs.Axp.SetDCDC3(on);
 }
@@ -155,6 +171,9 @@ uint16_t voltage = 2200;
 
   voltage += ((uint32_t)dim*1200)/15;
   core2_globs.Axp.SetLcdVoltage(voltage);
+
+
+//  core2_globs.Axp.ScreenBreath(dim);
 
 }
 

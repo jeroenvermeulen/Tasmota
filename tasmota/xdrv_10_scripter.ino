@@ -1919,6 +1919,18 @@ chknext:
           fvar = xPortGetCoreID();
           goto exit;
         }
+#ifdef USE_M5STACK_CORE2
+        if (!strncmp(vname, "c2ps(", 5)) {
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, 0);
+          while (*lp==' ') lp++;
+          float fvar1;
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
+          fvar = core2_setaxppin(fvar, fvar1);
+          len++;
+          goto exit;
+        }
+#endif // USE_M5STACK_CORE2
+
 #ifdef USE_SCRIPT_TASK
         if (!strncmp(vname, "ct(", 3)) {
           lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, 0);
