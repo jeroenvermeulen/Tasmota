@@ -33,6 +33,10 @@ struct CORE2_globs {
   MPU6886 Mpu;
   BM8563_RTC Rtc;
   bool ready;
+  bool tset;
+  uint32_t shutdownseconds;
+  uint8_t shutdowndelay;
+
 } core2_globs;
 
 struct CORE2_ADC {
@@ -117,12 +121,25 @@ void CORE2_WebShow(uint32_t json) {
 }
 
 const char CORE2_Commands[] PROGMEM = "CORE2|"
-  "LSLP";
+  "SHUTDOWN";
 
 void (* const CORE2_Command[])(void) PROGMEM = {
-  &CORE2_LightSleep};
+  &CORE2_Shutdown};
 
-void CORE2_LightSleep(void) {
+
+void CORE2_Shutdown(void) {
+  if (XdrvMailbox.payload >= 30)  {
+    core2_globs.shutdownseconds = XdrvMailbox.payload;
+    core2_globs.shutdowndelay = 10;
+  }
+  ResponseCmndNumber(XdrvMailbox.payload -2);
+}
+
+void CORE2_DoShutdown(void) {
+  core2_globs.Rtc.clearIRQ();
+  core2_globs.Rtc.SetAlarmIRQ(core2_globs.shutdownseconds);
+  delay(10);
+  core2_globs.Axp.PowerOff();
 }
 
 void core2_disp_pwr(uint8_t on) {
@@ -142,6 +159,22 @@ uint16_t voltage = 2200;
 void CORE2_EverySecond(void) {
   if (core2_globs.ready) {
     CORE2_GetADC();
+
+    if (RtcTime.year>2000 && core2_globs.tset==false) {
+      RTC_TimeTypeDef RTCtime;
+      RTCtime.Hours = RtcTime.hour;
+      RTCtime.Minutes = RtcTime.minute;
+      RTCtime.Seconds = RtcTime.second;
+      core2_globs.Rtc.SetTime(&RTCtime);
+      core2_globs.tset = true;
+    }
+
+    if (core2_globs.shutdowndelay) {
+      core2_globs.shutdowndelay--;
+      if (!core2_globs.shutdowndelay) {
+        CORE2_DoShutdown();
+      }
+    }
   }
 }
 
