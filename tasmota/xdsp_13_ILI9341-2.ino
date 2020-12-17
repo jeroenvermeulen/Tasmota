@@ -116,10 +116,17 @@ void ILI9341_2_InitDriver()
 }
 
 void core2_disp_pwr(uint8_t on);
+void core2_disp_dim(uint8_t dim);
 
 void ili9342_bpwr(uint8_t on) {
 #ifdef USE_M5STACK_CORE2
   core2_disp_pwr(on);
+#endif
+}
+
+void ili9342_dimm(uint8_t dim) {
+#ifdef USE_M5STACK_CORE2
+  core2_disp_dim(dim);
 #endif
 }
 

@@ -514,6 +514,8 @@ void ILI9341_2::DisplayOnff(int8_t on) {
   }
 }
 
+void ili9342_dimm(uint8_t dim);
+
 // dimmer 0-100
 void ILI9341_2::dim(uint8_t dim) {
   dimmer = dim;
@@ -522,6 +524,10 @@ void ILI9341_2::dim(uint8_t dim) {
 #ifdef ESP32
   if (_bp>=0) {
     ledcWrite(ESP32_PWM_CHANNEL,dimmer);
+  } else {
+    if (_hwspi==2) {
+      ili9342_dimm(dim);
+    }
   }
 #endif
 }
