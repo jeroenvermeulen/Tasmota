@@ -22,6 +22,7 @@
 
 #include <AXP192.h>
 #include <MPU6886.h>
+#include <BM8563_RTC.h>
 #include <i2c_bus.h>
 #include <soc/rtc.h>
 
@@ -30,6 +31,7 @@
 struct CORE2_globs {
   AXP192 Axp;
   MPU6886 Mpu;
+  BM8563_RTC Rtc;
 } core2_globs;
 
 struct CORE2_ADC {
@@ -56,6 +58,9 @@ void CORE2_Module_Init(void) {
 
   core2_globs.Mpu.Init();
   I2cSetActiveFound(MPU6886_ADDRESS, "MPU6886");
+
+  core2_globs.Rtc.begin();
+  I2cSetActiveFound(RTC_ADRESS, "RTC");
 
 }
 
