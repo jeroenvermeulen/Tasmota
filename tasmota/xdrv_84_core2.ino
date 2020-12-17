@@ -32,16 +32,16 @@ struct CORE2_globs {
   AXP192 Axp;
   MPU6886 Mpu;
   BM8563_RTC Rtc;
+  bool ready;
 } core2_globs;
 
 struct CORE2_ADC {
   float vbus_v;
-  float vbus_c;
   float batt_v;
-  float batt_c;
-  float batt_cc;
   float temp;
-  uint16_t per;
+  int16_t x;
+  int16_t y;
+  int16_t z;
 } core2_adc;
 
 // cause SC card is needed by scripter
@@ -62,6 +62,7 @@ void CORE2_Module_Init(void) {
   core2_globs.Rtc.begin();
   I2cSetActiveFound(RTC_ADRESS, "RTC");
 
+  core2_globs.ready = true;
 }
 
 
@@ -92,37 +93,25 @@ void CORE2_loop(uint32_t flg) {
 
 void CORE2_WebShow(uint32_t json) {
 
-  CORE2_GetADC();
-
-#ifdef USE_MPU6886
-  float x;
-  float y;
-  float z;
-  core2_globs.Mpu.getAccelData(&x, &y, &z);
-  int16_t ix=x*1000;
-  int16_t iy=y*1000;
-  int16_t iz=z*1000;
-#endif // USE_MPU6886
-
   char vstring[32];
   char bvstring[32];
   char tstring[32];
-  dtostrfd(core2_adc.vbus_v,3,vstring);
-  dtostrfd(core2_adc.batt_v,3,bvstring);
-  dtostrfd(core2_adc.temp,2,tstring);
+  dtostrfd(core2_adc.vbus_v, 3, vstring);
+  dtostrfd(core2_adc.batt_v, 3, bvstring);
+  dtostrfd(core2_adc.temp, 2, tstring);
 
   if (json) {
     ResponseAppend_P(PSTR(",\"CORE2\":{\"VBV\":%s,\"BV\":%s,\"CT\":%s"), vstring, bvstring, tstring);
 
 #ifdef USE_MPU6886
-    ResponseAppend_P(PSTR(",\"MPUX\":%d,\"MPUY\":%d,\"MPUZ\":%d"),ix,iy,iz);
+    ResponseAppend_P(PSTR(",\"MPUX\":%d,\"MPUY\":%d,\"MPUZ\":%d"), core2_adc.x, core2_adc.y, core2_adc.z);
 #endif
     ResponseJsonEnd();
   } else {
-    WSContentSend_PD(HTTP_CORE2,vstring, bvstring, tstring);
+    WSContentSend_PD(HTTP_CORE2, vstring, bvstring, tstring);
 
 #ifdef USE_MPU6886
-    WSContentSend_PD(HTTP_CORE2_MPU, ix, iy, iz);
+    WSContentSend_PD(HTTP_CORE2_MPU, core2_adc.x, core2_adc.y, core2_adc.z);
 #endif // USE_MPU6886
   }
 }
@@ -150,11 +139,26 @@ uint16_t voltage = 2200;
 
 }
 
+void CORE2_EverySecond(void) {
+  if (core2_globs.ready) {
+    CORE2_GetADC();
+  }
+}
+
 // currents are not supported by hardware implementation
 void CORE2_GetADC(void) {
     core2_adc.vbus_v = core2_globs.Axp.GetVBusVoltage();
     core2_adc.batt_v = core2_globs.Axp.GetBatVoltage();
     core2_adc.temp = core2_globs.Axp.GetTempInAXP192();
+#ifdef USE_MPU6886
+      float x;
+      float y;
+      float z;
+      core2_globs.Mpu.getAccelData(&x, &y, &z);
+      core2_adc.x=x*1000;
+      core2_adc.y=y*1000;
+      core2_adc.z=z*1000;
+#endif // USE_MPU6886
 }
 
 /*********************************************************************************************\
@@ -182,6 +186,9 @@ bool Xdrv84(uint8_t function) {
       break;
     case FUNC_INIT:
       CORE2_Init();
+      break;
+    case FUNC_EVERY_SECOND:
+      CORE2_EverySecond();
       break;
     case FUNC_LOOP:
       CORE2_loop(1);
