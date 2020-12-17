@@ -149,7 +149,8 @@ class ILI9341_2 : public Renderer {
   SPIClass *spi2;
   SPISettings sspi2;
   void writecmd(uint8_t d);
-  void setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+  void setAddrWindow(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void setAddrWindow_int(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
   void drawPixel(int16_t x, int16_t y, uint16_t color);
   void DisplayOnff(int8_t on);
   void setRotation(uint8_t m);
@@ -159,7 +160,7 @@ class ILI9341_2 : public Renderer {
   void fillScreen(uint16_t color);
   void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
   void dim(uint8_t dim);
-
+  void pushColors(uint16_t *data, uint8_t len, boolean first);
 
   void spiwrite(uint8_t c);
   void spiwrite16(uint16_t c);

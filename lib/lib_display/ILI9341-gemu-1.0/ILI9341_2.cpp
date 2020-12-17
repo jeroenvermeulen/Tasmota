@@ -280,9 +280,36 @@ void ILI9341_2::DisplayInit(int8_t p,int8_t size,int8_t rot,int8_t font) {
   fillScreen(ILI9341_2_BLACK);
 }
 
-void ILI9341_2::setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+void ILI9341_2::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+
+  if (!x0 && !y0 && !x1 && !y1) {
+    ILI9341_2_CS_HIGH
+    SPI_END_TRANSACTION();
+  } else {
+    ILI9341_2_CS_LOW
+    SPI_BEGIN_TRANSACTION();
+    setAddrWindow_int(x0,y0,x1-x0,y1-y0);
+  }
+}
+
+void ILI9341_2::pushColors(uint16_t *data, uint8_t len, boolean first) {
+  uint16_t color;
+
+  while (len--) {
+    color = *data++;
+#ifdef ILI9341_2_HWSPI
+    spi2->write16(color);
+#else
+    spiwrite16(color);
+#endif
+  }
+
+}
+
+void ILI9341_2::setAddrWindow_int(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
     uint32_t xa = ((uint32_t)x << 16) | (x+w-1);
     uint32_t ya = ((uint32_t)y << 16) | (y+h-1);
+
 
     writecmd(ILI9341_2_CASET); // Column addr set
 #ifdef ILI9341_2_HWSPI
@@ -299,6 +326,7 @@ void ILI9341_2::setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
 #endif
     writecmd(ILI9341_2_RAMWR); // write to RAM
 
+
 }
 
 void ILI9341_2::drawPixel(int16_t x, int16_t y, uint16_t color) {
@@ -306,10 +334,12 @@ void ILI9341_2::drawPixel(int16_t x, int16_t y, uint16_t color) {
 
   if((x < 0) ||(x >= _width) || (y < 0) || (y >= _height)) return;
 
-  SPI_BEGIN_TRANSACTION();
   ILI9341_2_CS_LOW
 
-  setAddrWindow(x,y,1,1);
+  SPI_BEGIN_TRANSACTION();
+
+  setAddrWindow_int(x,y,1,1);
+
 
 #ifdef ILI9341_2_HWSPI
   spi2->write16(color);
@@ -398,12 +428,12 @@ void ILI9341_2::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   if((x >= _width) || (y >= _height)) return;
   if((y+h-1) >= _height) h = _height-y;
 
+  ILI9341_2_CS_LOW
 
   SPI_BEGIN_TRANSACTION();
 
-  ILI9341_2_CS_LOW
+  setAddrWindow_int(x, y, 1, h);
 
-  setAddrWindow(x, y, 1, h);
 
   while (h--) {
 #ifdef ILI9341_2_HWSPI
@@ -424,11 +454,12 @@ void ILI9341_2::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   if((x >= _width) || (y >= _height)) return;
   if((x+w-1) >= _width)  w = _width-x;
 
-  SPI_BEGIN_TRANSACTION();
-
   ILI9341_2_CS_LOW
 
-  setAddrWindow(x, y, w, 1);
+  SPI_BEGIN_TRANSACTION();
+
+  setAddrWindow_int(x, y, w, 1);
+
 
   while (w--) {
 #ifdef ILI9341_2_HWSPI
@@ -455,13 +486,11 @@ void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t co
   if((x + w - 1) >= _width)  w = _width  - x;
   if((y + h - 1) >= _height) h = _height - y;
 
+  ILI9341_2_CS_LOW
 
   SPI_BEGIN_TRANSACTION();
 
-  ILI9341_2_CS_LOW
-
-  //setAddrWindow(x, y, w-1, h-1);
-  setAddrWindow(x, y, w, h);
+  setAddrWindow_int(x, y, w, h);
 
   for (y=h; y>0; y--) {
     for (x=w; x>0; x--) {
@@ -476,6 +505,8 @@ void ILI9341_2::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t co
 
   SPI_END_TRANSACTION();
 }
+
+
 
 void ili9342_bpwr(uint8_t on);
 
