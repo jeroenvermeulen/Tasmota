@@ -136,6 +136,8 @@ void CORE2_Shutdown(void) {
 }
 
 void CORE2_DoShutdown(void) {
+  SettingsSaveAll();
+  RtcSettingsSave();
   core2_globs.Rtc.clearIRQ();
   core2_globs.Rtc.SetAlarmIRQ(core2_globs.shutdownseconds);
   delay(10);
