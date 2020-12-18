@@ -151,11 +151,21 @@ void CORE2_DoShutdown(void) {
   core2_globs.Axp.PowerOff();
 }
 
-float core2_setaxppin(uint32_t pin, uint32_t val) {
-  if (pin==0) {
-    core2_globs.Axp.SetLed(val);
-  } else {
-    core2_globs.Axp.SetLDOEnable(3, val);
+extern uint8_t tbstate[3];
+
+float core2_setaxppin(uint32_t sel, uint32_t val) {
+  switch (sel) {
+    case 0:
+      core2_globs.Axp.SetLed(val);
+      break;
+    case 1:
+      core2_globs.Axp.SetLDOEnable(3, val);
+      break;
+    case 2:
+      if (val<1 || val>3) val = 1;
+      return tbstate[val - 1] & 1;
+      break;
+
   }
   return 0;
 }

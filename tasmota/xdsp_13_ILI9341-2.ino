@@ -135,6 +135,7 @@ void ili9342_dimm(uint8_t dim) {
 #ifdef USE_TOUCH_BUTTONS
 
 void ili9342_RotConvert(int16_t *x, int16_t *y) {
+
 int16_t temp;
   if (renderer) {
     uint8_t rot=renderer->getRotation();

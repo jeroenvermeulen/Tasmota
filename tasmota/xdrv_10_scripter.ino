@@ -1926,7 +1926,8 @@ chknext:
           float fvar1;
           lp = GetNumericArgument(lp, OPER_EQU, &fvar1, 0);
           fvar = core2_setaxppin(fvar, fvar1);
-          len++;
+          lp++;
+          len=0;
           goto exit;
         }
 #endif // USE_M5STACK_CORE2
