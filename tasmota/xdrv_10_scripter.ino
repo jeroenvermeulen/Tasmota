@@ -5846,10 +5846,11 @@ bool Script_SubCmd(void) {
   if (!bitRead(Settings.rule_enabled, 0)) return false;
 
   if (tasm_cmd_activ) return false;
+  //AddLog_P(LOG_LEVEL_INFO,PSTR(">> %s, %s, %d "),XdrvMailbox.topic, XdrvMailbox.data, XdrvMailbox.index);
 
   char command[CMDSZ];
   strlcpy(command, XdrvMailbox.topic, CMDSZ);
-  uint32_t pl = XdrvMailbox.payload;
+  int32_t pl = XdrvMailbox.payload;
   char pld[64];
   strlcpy(pld, XdrvMailbox.data, sizeof(pld));
 
@@ -5859,7 +5860,7 @@ bool Script_SubCmd(void) {
   strcpy(cp, XdrvMailbox.topic);
   uint8_t tlen = strlen(XdrvMailbox.topic);
   cp += tlen;
-  if (XdrvMailbox.index > 0) {
+  if (XdrvMailbox.index > 1) {
     *cp++ = XdrvMailbox.index | 0x30;
     tlen++;
   }
