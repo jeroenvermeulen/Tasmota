@@ -226,7 +226,7 @@ void Renderer::setTextFont(uint8_t f) {
       selected_font = &Font20;
       break;
     case 7:
-      selected_font = &iFont40;
+      selected_font = &RAFont;
       break;
     default:
       selected_font = &Font12;
