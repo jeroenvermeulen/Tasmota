@@ -6042,7 +6042,9 @@ bool ScriptMqttData(void)
       if (event_item.Key.length() == 0) {   //If did not specify Key
         value = sData;
       } else {      //If specified Key, need to parse Key/Value from JSON data
+
         JsonParser parser((char*)sData.c_str());
+#if 0
         JsonParserObject jsonData = parser.getRootObject();
         String key1 = event_item.Key;
         String key2;
@@ -6061,6 +6063,35 @@ bool ScriptMqttData(void)
           value = val.getStr();
           lkey = key1;
         }
+#else
+        const char *cp = event_item.Key.c_str();
+        JsonParserObject obj=parser.getRootObject();
+        JsonParserObject lastobj=obj;
+        char selem[32];
+        while (1) {
+          // read next element
+          for (uint32_t sp=0; sp<sizeof(selem)-1; sp++) {
+            if (!*cp || *cp=='.') {
+              selem[sp]=0;
+              cp++;
+              index++;
+              break;
+            }
+            selem[sp]=*cp++;
+          }
+          // now check element
+          obj = obj[selem];
+          if (!obj.isValid()) {
+            value=lastobj.getStr(selem);
+            break;
+          }
+          if (obj.isObject()) {
+            lastobj=obj;
+            continue;
+          }
+          if (!*cp) break;
+        }
+#endif
       }
       value.trim();
       char sbuffer[128];
