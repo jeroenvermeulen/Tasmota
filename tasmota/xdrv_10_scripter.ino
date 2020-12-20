@@ -6003,9 +6003,7 @@ void dateTime(uint16_t* date, uint16_t* time) {
 #ifndef MQTT_EVENT_MSIZE
 #define MQTT_EVENT_MSIZE 256
 #endif
-#ifndef MQTT_EVENT_JSIZE
-#define MQTT_EVENT_JSIZE 400
-#endif //SUPPORT_MQTT_EVENT
+
 
 /********************************************************************************************/
 /*
@@ -6074,31 +6072,44 @@ bool ScriptMqttData(void)
         }
 #else
         const char *cp = event_item.Key.c_str();
-        JsonParserObject obj=parser.getRootObject();
-        JsonParserObject lastobj=obj;
+        JsonParserObject obj = parser.getRootObject();
+        JsonParserObject lastobj = obj;
         char selem[32];
+        uint8_t aindex = 0;
         while (1) {
           // read next element
           for (uint32_t sp=0; sp<sizeof(selem)-1; sp++) {
             if (!*cp || *cp=='.') {
-              selem[sp]=0;
+              selem[sp] = 0;
               cp++;
               index++;
               break;
             }
-            selem[sp]=*cp++;
+            selem[sp] = *cp++;
+          }
+          // check for array
+          char *sp = strchr(selem,'[');
+          if (sp) {
+            *sp = 0;
+            aindex = atoi(sp+1);
           }
           // now check element
           obj = obj[selem];
           if (!obj.isValid()) {
-            if (lastobj[selem].isValid()) {
-              value=lastobj.getStr(selem);
+            JsonParserToken tok = lastobj[selem];
+            if (tok.isValid()) {
+              if (tok.isArray()) {
+                JsonParserArray array = JsonParserArray(tok);
+                value = array[aindex].getStr();
+              } else {
+                value = tok.getStr();
+              }
               json_valid = 1;
             }
             break;
           }
           if (obj.isObject()) {
-            lastobj=obj;
+            lastobj = obj;
             continue;
           }
           if (!*cp) break;
