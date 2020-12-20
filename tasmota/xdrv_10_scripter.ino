@@ -5196,6 +5196,7 @@ void HandleScriptConfiguration(void) {
     WSContentSend_P(HTTP_FORM_SCRIPT1,1,1,bitRead(Settings.rule_enabled,0) ? " checked" : "",glob_script_mem.script_size);
 #endif
 
+    WSContentFlush();
     // script is to larg for WSContentSend_P
     if (glob_script_mem.script_ram[0]) {
       _WSContentSend(glob_script_mem.script_ram);
