@@ -6027,13 +6027,19 @@ bool ScriptMqttData(void)
   }
   String sTopic = XdrvMailbox.topic;
   String sData = XdrvMailbox.data;
-  //AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: MQTT Topic %s, Event %s"), XdrvMailbox.topic, XdrvMailbox.data);
+
+#ifdef SUPPORT_MQTT_EVENT_MORE
+    AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: MQTT Topic %s, Event %s"), XdrvMailbox.topic, XdrvMailbox.data);
+#endif
+
   MQTT_Subscription event_item;
   //Looking for matched topic
   for (uint32_t index = 0; index < subscriptions.size(); index++) {
     event_item = subscriptions.get(index);
 
-    //AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: Match MQTT message Topic %s with subscription topic %s"), sTopic.c_str(), event_item.Topic.c_str());
+#ifdef SUPPORT_MQTT_EVENT_MORE
+    AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: Match MQTT message Topic %s with subscription topic %s"), sTopic.c_str(), event_item.Topic.c_str());
+#endif
     if (sTopic.startsWith(event_item.Topic)) {
       //This topic is subscribed by us, so serve it
       serviced = true;
@@ -6044,7 +6050,7 @@ bool ScriptMqttData(void)
       } else {      //If specified Key, need to parse Key/Value from JSON data
 
         JsonParser parser((char*)sData.c_str());
-#if 0
+#ifndef SUPPORT_MQTT_EVENT_MORE
         JsonParserObject jsonData = parser.getRootObject();
         String key1 = event_item.Key;
         String key2;
