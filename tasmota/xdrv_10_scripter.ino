@@ -5196,9 +5196,9 @@ void HandleScriptConfiguration(void) {
     WSContentSend_P(HTTP_FORM_SCRIPT1,1,1,bitRead(Settings.rule_enabled,0) ? " checked" : "",glob_script_mem.script_size);
 #endif
 
-    WSContentFlush();
-    // script is to larg for WSContentSend_P
+    // script is to large for WSContentSend_P
     if (glob_script_mem.script_ram[0]) {
+      WSContentFlush();
       _WSContentSend(glob_script_mem.script_ram);
     }
     WSContentSend_P(HTTP_FORM_SCRIPT1b);
@@ -6029,16 +6029,17 @@ bool ScriptMqttData(void)
   String sData = XdrvMailbox.data;
 
 #ifdef SUPPORT_MQTT_EVENT_MORE
-    AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: MQTT Topic %s, Event %s"), XdrvMailbox.topic, XdrvMailbox.data);
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: MQTT Topic %s, Event %s"), XdrvMailbox.topic, XdrvMailbox.data);
 #endif
 
   MQTT_Subscription event_item;
   //Looking for matched topic
   for (uint32_t index = 0; index < subscriptions.size(); index++) {
     event_item = subscriptions.get(index);
+    uint8_t json_valid = 0;
 
 #ifdef SUPPORT_MQTT_EVENT_MORE
-    AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: Match MQTT message Topic %s with subscription topic %s"), sTopic.c_str(), event_item.Topic.c_str());
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: Match MQTT message Topic %s with subscription topic %s"), sTopic.c_str(), event_item.Topic.c_str());
 #endif
     if (sTopic.startsWith(event_item.Topic)) {
       //This topic is subscribed by us, so serve it
@@ -6063,11 +6064,13 @@ bool ScriptMqttData(void)
           JsonParserToken val = jsonData[key1.c_str()].getObject()[key2.c_str()];
           if (!val) break;   //Failed to get the key/value, ignore this message.
           value = val.getStr();
+          json_valid = 1;
         } else {
           JsonParserToken val = jsonData[key1.c_str()];
           if (!val) break;
           value = val.getStr();
           lkey = key1;
+          json_valid = 1;
         }
 #else
         const char *cp = event_item.Key.c_str();
@@ -6088,7 +6091,10 @@ bool ScriptMqttData(void)
           // now check element
           obj = obj[selem];
           if (!obj.isValid()) {
-            value=lastobj.getStr(selem);
+            if (lastobj[selem].isValid()) {
+              value=lastobj.getStr(selem);
+              json_valid = 1;
+            }
             break;
           }
           if (obj.isObject()) {
@@ -6099,17 +6105,20 @@ bool ScriptMqttData(void)
         }
 #endif
       }
-      value.trim();
-      char sbuffer[128];
 
-      if (!strncmp(lkey.c_str(), "Epoch", 5)) {
-        uint32_t ep = atoi(value.c_str()) - (uint32_t)EPOCH_OFFSET;
-        snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=%d\n"), event_item.Event.c_str(), ep);
-      } else {
-        snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=\"%s\"\n"), event_item.Event.c_str(), value.c_str());
+      if (json_valid) {
+        value.trim();
+        char sbuffer[128];
+
+        if (!strncmp(lkey.c_str(), "Epoch", 5)) {
+          uint32_t ep = atoi(value.c_str()) - (uint32_t)EPOCH_OFFSET;
+          snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=%d\n"), event_item.Event.c_str(), ep);
+        } else {
+          snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=\"%s\"\n"), event_item.Event.c_str(), value.c_str());
+        }
+        //toLog(sbuffer);
+        execute_script(sbuffer);
       }
-      //toLog(sbuffer);
-      execute_script(sbuffer);
     }
   }
   return serviced;
