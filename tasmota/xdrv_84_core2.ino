@@ -78,7 +78,10 @@ void CORE2_Module_Init(void) {
 
 
 void CORE2_Init(void) {
-
+  // set rtc from chip
+  if (Rtc.utc_time < START_VALID_TIME) {
+    GetRtc();
+  }
 }
 
 void CORE2_audio_power(bool power) {
@@ -165,6 +168,9 @@ float core2_setaxppin(uint32_t sel, uint32_t val) {
       if (val<1 || val>3) val = 1;
       return tbstate[val - 1] & 1;
       break;
+    case 3:
+      GetRtc();
+      break;
 
   }
   return 0;
@@ -187,16 +193,47 @@ uint16_t voltage = 2200;
 
 }
 
+void SetRtc(void) {
+  RTC_TimeTypeDef RTCtime;
+  RTCtime.Hours = RtcTime.hour;
+  RTCtime.Minutes = RtcTime.minute;
+  RTCtime.Seconds = RtcTime.second;
+  core2_globs.Rtc.SetTime(&RTCtime);
+
+  RTC_DateTypeDef RTCdate;
+  RTCdate.WeekDay = RtcTime.day_of_week;
+  RTCdate.Month = RtcTime.month;
+  RTCdate.Date = RtcTime.day_of_month;
+  RTCdate.Year = RtcTime.year;
+  core2_globs.Rtc.SetDate(&RTCdate);
+}
+
+void GetRtc(void) {
+  RTC_TimeTypeDef RTCtime;
+  core2_globs.Rtc.GetTime(&RTCtime);
+  RtcTime.hour = RTCtime.Hours;
+  RtcTime.minute = RTCtime.Minutes;
+  RtcTime.second = RTCtime.Seconds;
+
+
+  RTC_DateTypeDef RTCdate;
+  core2_globs.Rtc.GetDate(&RTCdate);
+  RtcTime.day_of_week = RTCdate.WeekDay;
+  RtcTime.month = RTCdate.Month;
+  RtcTime.day_of_month = RTCdate.Date;
+  RtcTime.year = RTCdate.Year;
+  AddLog_P(LOG_LEVEL_INFO, PSTR("RTC: %02d:%02d:%02d"), RTCtime.Hours, RTCtime.Minutes, RTCtime.Seconds);
+  AddLog_P(LOG_LEVEL_INFO, PSTR("RTC: %02d.%02d.%04d"),  RTCdate.Date, RTCdate.Month, RTCdate.Year);
+
+}
+
+
 void CORE2_EverySecond(void) {
   if (core2_globs.ready) {
     CORE2_GetADC();
 
     if (RtcTime.year>2000 && core2_globs.tset==false) {
-      RTC_TimeTypeDef RTCtime;
-      RTCtime.Hours = RtcTime.hour;
-      RTCtime.Minutes = RtcTime.minute;
-      RTCtime.Seconds = RtcTime.second;
-      core2_globs.Rtc.SetTime(&RTCtime);
+      SetRtc();
       core2_globs.tset = true;
     }
 

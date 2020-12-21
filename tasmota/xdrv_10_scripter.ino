@@ -1251,7 +1251,7 @@ float Get_MFVal(uint8_t index, int16_t bind) {
         if (bind<0) {
           return maxind;
         }
-        if (bind<1 || bind>maxind) bind = maxind;
+        if (bind < 1 || bind > maxind ) bind = 1;
         return mflp->rbuff[bind - 1];
     }
     mp += sizeof(struct M_FILT) + ((mflp->numvals & AND_FILT_MASK) - 1) * sizeof(float);
@@ -1266,10 +1266,12 @@ void Set_MFVal(uint8_t index, uint16_t bind, float val) {
     if (count==index) {
         uint16_t maxind = mflp->numvals & AND_FILT_MASK;
         if (!bind) {
+          if (val < 0 || val >= maxind) val = 0;
           mflp->index = val;
         } else {
-          if (bind<1 || bind>maxind) bind = maxind;
-          mflp->rbuff[bind-1] = val;
+          if (bind > 1 && bind <= maxind) {
+            mflp->rbuff[bind-1] = val;
+          }
         }
         return;
     }
@@ -2406,6 +2408,10 @@ chknext:
           fvar = ESP.getCpuFreqMHz();
 #endif
           goto exit;
+        }
+        if (!strncmp(vname, "frnm", 4)) {
+          if (sp) strlcpy(sp, SettingsText(SET_FRIENDLYNAME1), glob_script_mem.max_ssize);
+          goto strexit;
         }
         break;
       case 'g':
@@ -7173,7 +7179,8 @@ exgc:
                   char *cp = &label[3];
                   //todflg=atoi(&label[3]);
                   todflg = strtol(cp, &cp, 10);
-                  if (todflg>=entries) todflg = entries - 1;
+                  if (todflg >= entries) todflg = entries - 1;
+                  if (todflg < 0) todflg = 0;
                   if (*cp=='/') {
                     cp++;
                     divflg = strtol(cp, &cp, 10);
