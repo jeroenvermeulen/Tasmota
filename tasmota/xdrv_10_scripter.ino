@@ -1584,7 +1584,7 @@ float fvar;
 char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp, JsonParserObject *jo) {
     uint16_t count,len = 0;
     uint8_t nres = 0;
-    char vname[32];
+    char vname[64];
     float fvar = 0;
     tind->index = 0;
     tind->bits.data = 0;
@@ -1713,7 +1713,7 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
 
     if (jo) {
       // look for json input
-      char jvname[32];
+      char jvname[64];
       strcpy(jvname, vname);
       const char* str_value;
       uint8_t aindex;
@@ -6201,7 +6201,7 @@ String ScriptSubscribe(const char *data, int data_len)
         }
       }
     }
-    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: Subscribe command with parameters: %s, %s, %s."), event_name.c_str(), topic.c_str(), key.c_str());
+    //AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: Subscribe command with parameters: %s, %s, %s."), event_name.c_str(), topic.c_str(), key.c_str());
     //event_name.toUpperCase();
     if (event_name.length() > 0 && topic.length() > 0) {
       //Search all subscriptions
@@ -6222,7 +6222,7 @@ String ScriptSubscribe(const char *data, int data_len)
           topic.concat("/#");
         }
       }
-      AddLog_P(LOG_LEVEL_INFO, PSTR("Script: New topic: %s."), topic.c_str());
+      // AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: New topic: %s."), topic.c_str());
       //MQTT Subscribe
       subscription_item.Event = event_name;
       subscription_item.Topic = topic.substring(0, topic.length() - 2);   //Remove "/#" so easy to match
