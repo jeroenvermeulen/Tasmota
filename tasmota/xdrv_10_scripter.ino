@@ -5903,9 +5903,13 @@ void execute_script(char *script) {
 #define D_CMND_SUBSCRIBE "Subscribe"
 #define D_CMND_UNSUBSCRIBE "Unsubscribe"
 
-enum ScriptCommands { CMND_SCRIPT,CMND_SUBSCRIBE, CMND_UNSUBSCRIBE };
-const char kScriptCommands[] PROGMEM = D_CMND_SCRIPT "|" D_CMND_SUBSCRIBE "|" D_CMND_UNSUBSCRIBE;
 
+enum ScriptCommands { CMND_SCRIPT,CMND_SUBSCRIBE, CMND_UNSUBSCRIBE, CMND_SUBTEST};
+const char kScriptCommands[] PROGMEM = D_CMND_SCRIPT "|" D_CMND_SUBSCRIBE "|" D_CMND_UNSUBSCRIBE
+#ifdef DEBUG_MQTT_EVENT
+  "|" "SUBTEST"
+#endif
+;
 bool ScriptCommand(void) {
   char command[CMDSZ];
   bool serviced = true;
@@ -5972,8 +5976,14 @@ bool ScriptCommand(void) {
     } else if (CMND_UNSUBSCRIBE == command_code) {			//MQTT Un-subscribe command. UnSubscribe <Event>
       String result = ScriptUnsubscribe(XdrvMailbox.data, XdrvMailbox.data_len);
       Response_P(S_JSON_COMMAND_SVALUE, command, result.c_str());
+#ifdef DEBUG_MQTT_EVENT
+    } else if (CMND_SUBTEST == command_code) {
+      XdrvMailbox.topic = (char*)"tele";
+      ScriptMqttData();
+      serviced = true;
+#endif
 #endif //SUPPORT_MQTT_EVENT
-  }
+    }
   return serviced;
 }
 
@@ -5996,13 +6006,14 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 #endif //USE_SCRIPT_FATFS
 
-
+//#define DEBUG_MQTT_EVENT
 
 #ifdef SUPPORT_MQTT_EVENT
 
 #ifndef MQTT_EVENT_MSIZE
 #define MQTT_EVENT_MSIZE 256
 #endif
+
 
 
 /********************************************************************************************/
@@ -6026,7 +6037,7 @@ bool ScriptMqttData(void)
   String sTopic = XdrvMailbox.topic;
   String sData = XdrvMailbox.data;
 
-#ifdef SUPPORT_MQTT_EVENT_MORE
+#ifdef DEBUG_MQTT_EVENT
     AddLog_P(LOG_LEVEL_INFO, PSTR("Script: MQTT Topic %s, Event %s"), XdrvMailbox.topic, XdrvMailbox.data);
 #endif
 
@@ -6036,8 +6047,8 @@ bool ScriptMqttData(void)
     event_item = subscriptions.get(index);
     uint8_t json_valid = 0;
 
-#ifdef SUPPORT_MQTT_EVENT_MORE
-    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: Match MQTT message Topic %s with subscription topic %s"), sTopic.c_str(), event_item.Topic.c_str());
+#ifdef DEBUG_MQTT_EVENT
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: Match MQTT message Topic %s with subscription topic %s and key %s"), sTopic.c_str(), event_item.Topic.c_str(),event_item.Key.c_str());
 #endif
     if (sTopic.startsWith(event_item.Topic)) {
       //This topic is subscribed by us, so serve it
@@ -6048,8 +6059,9 @@ bool ScriptMqttData(void)
         value = sData;
       } else {      //If specified Key, need to parse Key/Value from JSON data
 
-        JsonParser parser((char*)sData.c_str());
+
 #ifndef SUPPORT_MQTT_EVENT_MORE
+        JsonParser parser((char*)sData.c_str());
         JsonParserObject jsonData = parser.getRootObject();
         String key1 = event_item.Key;
         String key2;
@@ -6071,7 +6083,11 @@ bool ScriptMqttData(void)
           json_valid = 1;
         }
 #else
+        JsonParser parser((char*)sData.c_str());
         const char *cp = event_item.Key.c_str();
+#ifdef DEBUG_MQTT_EVENT
+        AddLog_P(LOG_LEVEL_INFO, PSTR("Script: parsing json key: %s from json: %s"), cp, sData.c_str());
+#endif
         JsonParserObject obj = parser.getRootObject();
         JsonParserObject lastobj = obj;
         char selem[32];
@@ -6087,6 +6103,9 @@ bool ScriptMqttData(void)
             }
             selem[sp] = *cp++;
           }
+#ifdef DEBUG_MQTT_EVENT
+          AddLog_P(LOG_LEVEL_INFO, PSTR("Script: cmp current key: %s"), selem);
+#endif
           // check for array
           char *sp = strchr(selem,'[');
           if (sp) {
@@ -6096,6 +6115,9 @@ bool ScriptMqttData(void)
           // now check element
           obj = obj[selem];
           if (!obj.isValid()) {
+#ifdef DEBUG_MQTT_EVENT
+            AddLog_P(LOG_LEVEL_INFO, PSTR("Script: obj invalid: %s"), selem);
+#endif
             JsonParserToken tok = lastobj[selem];
             if (tok.isValid()) {
               if (tok.isArray()) {
@@ -6106,6 +6128,9 @@ bool ScriptMqttData(void)
               }
               json_valid = 1;
             }
+#ifdef DEBUG_MQTT_EVENT
+            AddLog_P(LOG_LEVEL_INFO, PSTR("Script: token invalid: %s"), selem);
+#endif
             break;
           }
           if (obj.isObject()) {
@@ -6127,6 +6152,9 @@ bool ScriptMqttData(void)
         } else {
           snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=\"%s\"\n"), event_item.Event.c_str(), value.c_str());
         }
+#ifdef DEBUG_MQTT_EVENT
+        AddLog_P(LOG_LEVEL_INFO, PSTR("Script: setting script var %s"), sbuffer);
+#endif
         //toLog(sbuffer);
         execute_script(sbuffer);
       }
@@ -6173,7 +6201,7 @@ String ScriptSubscribe(const char *data, int data_len)
         }
       }
     }
-    //AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: Subscribe command with parameters: %s, %s, %s."), event_name.c_str(), topic.c_str(), key.c_str());
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: Subscribe command with parameters: %s, %s, %s."), event_name.c_str(), topic.c_str(), key.c_str());
     //event_name.toUpperCase();
     if (event_name.length() > 0 && topic.length() > 0) {
       //Search all subscriptions
@@ -6194,7 +6222,7 @@ String ScriptSubscribe(const char *data, int data_len)
           topic.concat("/#");
         }
       }
-      //AddLog_P(LOG_LEVEL_DEBUG, PSTR("Script: New topic: %s."), topic.c_str());
+      AddLog_P(LOG_LEVEL_INFO, PSTR("Script: New topic: %s."), topic.c_str());
       //MQTT Subscribe
       subscription_item.Event = event_name;
       subscription_item.Topic = topic.substring(0, topic.length() - 2);   //Remove "/#" so easy to match
