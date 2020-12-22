@@ -218,6 +218,7 @@ uint16_t voltage = 2200;
 
 }
 
+/*
 void SetRtc(void) {
   RTC_TimeTypeDef RTCtime;
   RTCtime.Hours = RtcTime.hour;
@@ -232,6 +233,7 @@ void SetRtc(void) {
   RTCdate.Year = RtcTime.year;
   core2_globs.Rtc.SetDate(&RTCdate);
 }
+*/
 
 void GetRtc(void) {
   RTC_TimeTypeDef RTCtime;
@@ -292,7 +294,7 @@ void CORE2_EverySecond(void) {
   if (core2_globs.ready) {
     CORE2_GetADC();
 
-    if (Rtc.utc_time > START_VALID_TIME && core2_globs.tset==false && abs(Rtc.utc_time - Get_utc()) > 5) {
+    if (Rtc.utc_time > START_VALID_TIME && core2_globs.tset==false && abs(Rtc.utc_time - Get_utc()) > 3) {
       Set_utc(Rtc.utc_time);
       AddLog_P(LOG_LEVEL_INFO, PSTR("Write Time TO BM8563 from NTP (" D_UTC_TIME ") %s, (" D_DST_TIME ") %s, (" D_STD_TIME ") %s"),
                   GetDateAndTime(DT_UTC).c_str(), GetDateAndTime(DT_DST).c_str(), GetDateAndTime(DT_STD).c_str());
