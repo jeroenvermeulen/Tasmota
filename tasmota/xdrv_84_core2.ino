@@ -78,10 +78,35 @@ void CORE2_Module_Init(void) {
 
 
 void CORE2_Init(void) {
-  // set rtc from chip
+
   if (Rtc.utc_time < START_VALID_TIME) {
-    GetRtc();
+    // set rtc from chip
+    Rtc.utc_time = Get_utc();
+
+    TIME_T tmpTime;
+    TasmotaGlobal.ntp_force_sync = true; //force to sync with ntp
+  //  Rtc.utc_time = ReadFromDS3231(); //we read UTC TIME from DS3231
+    // from this line, we just copy the function from "void RtcSecond()" at the support.ino ,line 2143 and above
+    // We need it to set rules etc.
+    BreakTime(Rtc.utc_time, tmpTime);
+    if (Rtc.utc_time < START_VALID_TIME ) {
+      //ds3231ReadStatus = true; //if time in DS3231 is valid, do  not update again
+    }
+    RtcTime.year = tmpTime.year + 1970;
+    Rtc.daylight_saving_time = RuleToTime(Settings.tflag[1], RtcTime.year);
+    Rtc.standard_time = RuleToTime(Settings.tflag[0], RtcTime.year);
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Set time from BM8563 to RTC (" D_UTC_TIME ") %s, (" D_DST_TIME ") %s, (" D_STD_TIME ") %s"),
+                GetDateAndTime(DT_UTC).c_str(), GetDateAndTime(DT_DST).c_str(), GetDateAndTime(DT_STD).c_str());
+    if (Rtc.local_time < START_VALID_TIME) {  // 2016-01-01
+      TasmotaGlobal.rules_flag.time_init = 1;
+    } else {
+      TasmotaGlobal.rules_flag.time_set = 1;
+    }
+
+
+
   }
+
 }
 
 void CORE2_audio_power(bool power) {
@@ -222,18 +247,55 @@ void GetRtc(void) {
   RtcTime.month = RTCdate.Month;
   RtcTime.day_of_month = RTCdate.Date;
   RtcTime.year = RTCdate.Year;
+
   AddLog_P(LOG_LEVEL_INFO, PSTR("RTC: %02d:%02d:%02d"), RTCtime.Hours, RTCtime.Minutes, RTCtime.Seconds);
   AddLog_P(LOG_LEVEL_INFO, PSTR("RTC: %02d.%02d.%04d"),  RTCdate.Date, RTCdate.Month, RTCdate.Year);
 
 }
 
+void Set_utc(uint32_t epoch_time) {
+TIME_T tm;
+  BreakTime(epoch_time, tm);
+  RTC_TimeTypeDef RTCtime;
+  RTCtime.Hours = tm.hour;
+  RTCtime.Minutes = tm.minute;
+  RTCtime.Seconds = tm.second;
+  core2_globs.Rtc.SetTime(&RTCtime);
+  RTC_DateTypeDef RTCdate;
+  RTCdate.WeekDay = tm.day_of_week;
+  RTCdate.Month = tm.month;
+  RTCdate.Date = tm.day_of_month;
+  RTCdate.Year = tm.year + 1970;
+  core2_globs.Rtc.SetDate(&RTCdate);
+}
+
+
+uint32_t Get_utc(void) {
+  RTC_TimeTypeDef RTCtime;
+  // 1. read has errors ???
+  core2_globs.Rtc.GetTime(&RTCtime);
+  core2_globs.Rtc.GetTime(&RTCtime);
+  RTC_DateTypeDef RTCdate;
+  core2_globs.Rtc.GetDate(&RTCdate);
+  TIME_T tm;
+  tm.second =  RTCtime.Seconds;
+  tm.minute = RTCtime.Minutes;
+  tm.hour = RTCtime.Hours;
+  tm.day_of_week = RTCdate.WeekDay;
+  tm.day_of_month = RTCdate.Date;
+  tm.month = RTCdate.Month;
+  tm.year =RTCdate.Year - 1970;
+  return MakeTime(tm);
+}
 
 void CORE2_EverySecond(void) {
   if (core2_globs.ready) {
     CORE2_GetADC();
 
-    if (RtcTime.year>2000 && core2_globs.tset==false) {
-      SetRtc();
+    if (Rtc.utc_time > START_VALID_TIME && core2_globs.tset==false && abs(Rtc.utc_time - Get_utc()) > 5) {
+      Set_utc(Rtc.utc_time);
+      AddLog_P(LOG_LEVEL_INFO, PSTR("Write Time TO BM8563 from NTP (" D_UTC_TIME ") %s, (" D_DST_TIME ") %s, (" D_STD_TIME ") %s"),
+                  GetDateAndTime(DT_UTC).c_str(), GetDateAndTime(DT_DST).c_str(), GetDateAndTime(DT_STD).c_str());
       core2_globs.tset = true;
     }
 
