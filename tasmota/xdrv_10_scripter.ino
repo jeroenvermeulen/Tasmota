@@ -2789,6 +2789,13 @@ chknext:
           len++;
           goto exit;
         }
+        if (!strncmp(vname, "rec(", 4)) {
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
+          fvar = i2s_record(str);
+          len++;
+          goto exit;
+        }
         break;
       case 's':
         if (!strncmp(vname, "secs", 4)) {
@@ -7682,6 +7689,7 @@ bool Xdrv10(uint8_t function)
 
 #endif // USE_SCRIPT_FATFS>=0
         AddLog_P(LOG_LEVEL_INFO,PSTR("FATFS mount OK!"));
+
         //fsp->dateTimeCallback(dateTime);
         glob_script_mem.script_sd_found = 1;
         char *script;

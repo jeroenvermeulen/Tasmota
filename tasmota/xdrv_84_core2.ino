@@ -181,6 +181,8 @@ void CORE2_DoShutdown(void) {
 
 extern uint8_t tbstate[3];
 
+
+// c2ps(a b)
 float core2_setaxppin(uint32_t sel, uint32_t val) {
   switch (sel) {
     case 0:
@@ -194,9 +196,24 @@ float core2_setaxppin(uint32_t sel, uint32_t val) {
       return tbstate[val - 1] & 1;
       break;
     case 3:
+      switch (val) {
+        case 0:
+          return core2_globs.Axp.isACIN();
+          break;
+        case 1:
+          return core2_globs.Axp.isCharging();
+          break;
+        case 2:
+          return core2_globs.Axp.isVBUS();
+          break;
+        case 3:
+          return core2_globs.Axp.AXPInState();
+          break;
+      }
+      break;
+    default:
       GetRtc();
       break;
-
   }
   return 0;
 }
@@ -324,6 +341,78 @@ void CORE2_GetADC(void) {
       core2_adc.y=y*1000;
       core2_adc.z=z*1000;
 #endif // USE_MPU6886
+}
+
+#include <driver/i2s.h>
+
+#define CONFIG_I2S_BCK_PIN 12
+#define CONFIG_I2S_LRCK_PIN 0
+#define CONFIG_I2S_DATA_PIN 2
+#define CONFIG_I2S_DATA_IN_PIN 34
+#define MODE_MIC 0
+#define MODE_SPK 1
+#define Speak_I2S_NUMBER I2S_NUM_0
+
+uint32_t InitI2SSpeakOrMic(int mode) {
+    esp_err_t err = ESP_OK;
+    i2s_driver_uninstall(Speak_I2S_NUMBER);
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
+        .sample_rate = 44100,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
+        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+        .communication_format = I2S_COMM_FORMAT_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+        .dma_buf_count = 2,
+        .dma_buf_len = 128,
+    };
+    if (mode == MODE_MIC) {
+        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+        i2s_config.sample_rate = 8000;
+    } else {
+        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
+        i2s_config.use_apll = false;
+        i2s_config.tx_desc_auto_clear = true;
+    }
+    err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
+    i2s_pin_config_t tx_pin_config;
+    tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
+    tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
+    tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
+    tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
+    err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+    err += i2s_set_clk(Speak_I2S_NUMBER, 44100, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    return err;
+}
+
+
+#define DATA_SIZE 1024
+#define MICBUFF DATA_SIZE*100
+uint32_t i2s_record(char *path) {
+
+//  i2s_driver_uninstall(I2S_NUM_0);
+
+  uint32_t err = InitI2SSpeakOrMic(MODE_MIC);
+  if (err) return err;
+
+  uint8_t *micbuff = (uint8_t*)heap_caps_malloc(MICBUFF, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  uint32_t data_offset = 0;
+  uint32_t stime=millis();
+  while (1) {
+    uint32_t bytes_read;
+    i2s_read(Speak_I2S_NUMBER, (char *)(micbuff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+    if (bytes_read != DATA_SIZE) break;
+    data_offset += DATA_SIZE;
+    if (data_offset>=MICBUFF) break;
+  }
+  AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
+  InitI2SSpeakOrMic(MODE_SPK);
+  // save to path
+  File fwp = fsp->open(path, FILE_WRITE);
+  fwp.write(micbuff, MICBUFF);
+  fwp.close();
+  free(micbuff);
+  return 0;
 }
 
 /*********************************************************************************************\

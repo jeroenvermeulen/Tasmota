@@ -232,7 +232,7 @@ void I2S_Init(void) {
 #endif  // ESP32
 #else
     out = new AudioOutputI2S(0, 1);
-#endif
+#endif // EXTERNAL_DAC_PLAY
 
   is2_volume=10;
   out->SetGain(((float)is2_volume/100.0)*4.0);
