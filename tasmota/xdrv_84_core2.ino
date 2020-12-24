@@ -47,7 +47,7 @@ struct CORE2_globs {
   bool tset;
   uint32_t shutdownseconds;
   uint8_t shutdowndelay;
-
+  bool timesynced;
 } core2_globs;
 
 struct CORE2_ADC {
@@ -108,15 +108,6 @@ void CORE2_Init(void) {
 
   }
 
-// Set time for sd card
-  struct timezone tz;
-  struct timeval tv;
-  tv.tv_sec = Rtc.utc_time;
-  tv.tv_usec = 0;
-  tz.tz_minuteswest = 0;
-  tz.tz_dsttime = 0;
-  settimeofday(&tv, &tz);
-
 }
 
 void CORE2_audio_power(bool power) {
@@ -138,6 +129,7 @@ const char HTTP_CORE2_MPU[] PROGMEM =
 
 
 void CORE2_loop(uint32_t flg) {
+  Sync_RTOS_TIME();
 }
 
 void CORE2_WebShow(uint32_t json) {
@@ -262,6 +254,28 @@ void SetRtc(void) {
 }
 */
 
+
+// needed for sd card time
+void Sync_RTOS_TIME(void) {
+
+  if (Rtc.local_time < START_VALID_TIME || core2_globs.timesynced) return;
+
+  core2_globs.timesynced = 1;
+// Set freertos time for sd card
+
+  struct timeval tv;
+  //tv.tv_sec = Rtc.utc_time;
+  tv.tv_sec = Rtc.local_time;
+  tv.tv_usec = 0;
+
+  //struct timezone tz;
+  //tz.tz_minuteswest = 0;
+  //tz.tz_dsttime = 0;
+  //settimeofday(&tv, &tz);
+
+  settimeofday(&tv, NULL);
+}
+
 void GetRtc(void) {
   RTC_TimeTypeDef RTCtime;
   core2_globs.Rtc.GetTime(&RTCtime);
@@ -366,6 +380,7 @@ const i2s_port_t I2S_PORT = I2S_NUM_0;
 const int BLOCK_SIZE = 1024;
 
 uint32_t InitI2SMic(void) {
+  esp_err_t err = ESP_OK;
   // The I2S config as per the example
   const i2s_config_t i2s_config = {
      .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX), // Receive, not transfer
@@ -386,7 +401,7 @@ uint32_t InitI2SMic(void) {
    tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
    err = i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
 
-   err+ = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
+   err += i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
 
    return err;
 }
@@ -427,10 +442,10 @@ uint32_t InitI2SSpeakOrMic(int mode) {
 #define DATA_SIZE 1024
 #define MICBUFF DATA_SIZE*100
 uint32_t i2s_record(char *path) {
-
+  esp_err_t err = ESP_OK;
 //  i2s_driver_uninstall(I2S_NUM_0);
 
-  uint32_t err = InitI2SSpeakOrMic(MODE_MIC);
+  err = InitI2SSpeakOrMic(MODE_MIC);
   if (err) return err;
 
   uint8_t *micbuff = (uint8_t*)heap_caps_malloc(MICBUFF, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);

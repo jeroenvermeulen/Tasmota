@@ -3814,8 +3814,9 @@ void esp32_beep(int32_t freq ,uint32_t len) {
 uint8_t pwmpin[5];
 
 void esp_pwm(int32_t value, uint32 freq, uint32_t channel) {
-  if (channel < 1 || channel > 3) channel = 1;
+
 #ifdef ESP32
+  if (channel < 1 || channel > 8) channel = 1;
   channel+=7;
   if (value < 0) {
     if (value <= -64) value = 0;
@@ -3831,6 +3832,7 @@ void esp_pwm(int32_t value, uint32 freq, uint32_t channel) {
   }
 #else
   // esp8266 default to range 0-1023
+  if (channel < 1 || channel > 5) channel = 1;
   channel-=1;
   if (value < 0) {
     if (value <= -64) value = 0;
