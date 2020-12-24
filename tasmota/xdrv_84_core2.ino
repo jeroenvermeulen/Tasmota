@@ -27,6 +27,10 @@ rtc use after reboot, sync with internet on regular intervals.
 #ifdef ESP32
 #ifdef USE_M5STACK_CORE2
 
+#include <Esp.h>
+#include <sys/time.h>
+#include <esp_system.h>
+
 #include <AXP192.h>
 #include <MPU6886.h>
 #include <BM8563_RTC.h>
@@ -92,7 +96,6 @@ void CORE2_Init(void) {
     if (Rtc.utc_time < START_VALID_TIME ) {
       //ds3231ReadStatus = true; //if time in DS3231 is valid, do  not update again
     }
-    RtcTime.year = tmpTime.year + 1970;
     Rtc.daylight_saving_time = RuleToTime(Settings.tflag[1], RtcTime.year);
     Rtc.standard_time = RuleToTime(Settings.tflag[0], RtcTime.year);
     AddLog_P(LOG_LEVEL_INFO, PSTR("Set time from BM8563 to RTC (" D_UTC_TIME ") %s, (" D_DST_TIME ") %s, (" D_STD_TIME ") %s"),
@@ -103,9 +106,16 @@ void CORE2_Init(void) {
       TasmotaGlobal.rules_flag.time_set = 1;
     }
 
-
-
   }
+
+// Set time for sd card
+  struct timezone tz;
+  struct timeval tv;
+  tv.tv_sec = Rtc.utc_time;
+  tv.tv_usec = 0;
+  tz.tz_minuteswest = 0;
+  tz.tz_dsttime = 0;
+  settimeofday(&tv, &tz);
 
 }
 
@@ -288,7 +298,6 @@ TIME_T tm;
   core2_globs.Rtc.SetDate(&RTCdate);
 }
 
-
 uint32_t Get_utc(void) {
   RTC_TimeTypeDef RTCtime;
   // 1. read has errors ???
@@ -352,6 +361,35 @@ void CORE2_GetADC(void) {
 #define MODE_MIC 0
 #define MODE_SPK 1
 #define Speak_I2S_NUMBER I2S_NUM_0
+
+const i2s_port_t I2S_PORT = I2S_NUM_0;
+const int BLOCK_SIZE = 1024;
+
+uint32_t InitI2SMic(void) {
+  // The I2S config as per the example
+  const i2s_config_t i2s_config = {
+     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX), // Receive, not transfer
+     .sample_rate = 8000,                         // 16KHz
+     //.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
+     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
+     .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
+     .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,     // Interrupt level 1
+     .dma_buf_count = 8,                           // number of buffers
+     .dma_buf_len = BLOCK_SIZE                     // samples per buffer
+   };
+
+   i2s_pin_config_t tx_pin_config;
+   tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
+   tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
+   tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
+   tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
+   err = i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+
+   err+ = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
+
+   return err;
+}
 
 uint32_t InitI2SSpeakOrMic(int mode) {
     esp_err_t err = ESP_OK;

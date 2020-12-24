@@ -2789,6 +2789,7 @@ chknext:
           len++;
           goto exit;
         }
+#if  defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2))
         if (!strncmp(vname, "rec(", 4)) {
           char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
@@ -2796,6 +2797,7 @@ chknext:
           len++;
           goto exit;
         }
+#endif
         break;
       case 's':
         if (!strncmp(vname, "secs", 4)) {
