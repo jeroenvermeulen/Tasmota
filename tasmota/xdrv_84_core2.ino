@@ -45,7 +45,9 @@ struct CORE2_globs {
   BM8563_RTC Rtc;
   bool ready;
   bool tset;
-  uint32_t shutdownseconds;
+  int32_t shutdownseconds;
+  uint8_t wakeup_hour;
+  uint8_t wakeup_minute;
   uint8_t shutdowndelay;
   bool timesynced;
 } core2_globs;
@@ -165,18 +167,41 @@ void (* const CORE2_Command[])(void) PROGMEM = {
 
 
 void CORE2_Shutdown(void) {
-  if (XdrvMailbox.payload >= 30)  {
-    core2_globs.shutdownseconds = XdrvMailbox.payload;
+  char *mp = strchr(XdrvMailbox.data, ':');
+  if (mp) {
+    core2_globs.wakeup_hour = atoi(XdrvMailbox.data);
+    core2_globs.wakeup_minute = atoi(mp+1);
+    core2_globs.shutdownseconds = -1;
     core2_globs.shutdowndelay = 10;
+    char tbuff[16];
+    sprintf(tbuff,"%02.2d:%02.2d", core2_globs.wakeup_hour, core2_globs.wakeup_minute );
+    ResponseCmndChar(tbuff);
+  } else {
+    if (XdrvMailbox.payload >= 30)  {
+      core2_globs.shutdownseconds = XdrvMailbox.payload;
+      core2_globs.shutdowndelay = 10;
+    }
+    ResponseCmndNumber(XdrvMailbox.payload);
   }
-  ResponseCmndNumber(XdrvMailbox.payload -2);
+
 }
 
 void CORE2_DoShutdown(void) {
   SettingsSaveAll();
   RtcSettingsSave();
   core2_globs.Rtc.clearIRQ();
-  core2_globs.Rtc.SetAlarmIRQ(core2_globs.shutdownseconds);
+  if (core2_globs.shutdownseconds > 0) {
+    core2_globs.Rtc.SetAlarmIRQ(core2_globs.shutdownseconds);
+  } else {
+    RTC_DateTypeDef wdt;
+    RTC_TimeTypeDef wut;
+    wdt.WeekDay = RtcTime.day_of_week;
+    wdt.Date = RtcTime.day_of_month;
+    wut.Hours = core2_globs.wakeup_hour;
+    wut.Minutes = core2_globs.wakeup_minute;
+    wut.Seconds = 0;
+    core2_globs.Rtc.SetAlarmIRQ(wdt, wut);
+  }
   delay(10);
   core2_globs.Axp.PowerOff();
 }
