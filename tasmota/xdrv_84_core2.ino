@@ -443,7 +443,7 @@ uint32_t InitI2SSpeakOrMic(int mode) {
     };
     if (mode == MODE_MIC) {
         i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
-        i2s_config.sample_rate = 8000;
+      //  i2s_config.sample_rate = 8000;
     } else {
         i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
         i2s_config.use_apll = false;
@@ -463,14 +463,18 @@ uint32_t InitI2SSpeakOrMic(int mode) {
 
 #define DATA_SIZE 1024
 #define MICBUFF DATA_SIZE*100
-uint32_t i2s_record(char *path) {
+uint32_t i2s_record(char *path, uint32_t secs) {
   esp_err_t err = ESP_OK;
 //  i2s_driver_uninstall(I2S_NUM_0);
 
   err = InitI2SSpeakOrMic(MODE_MIC);
   if (err) return err;
 
-  uint8_t *micbuff = (uint8_t*)heap_caps_malloc(MICBUFF, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  uint32_t size = secs * 44100 * 2;
+
+  uint8_t *micbuff = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!micbuff) return 2;
+
   uint32_t data_offset = 0;
   uint32_t stime=millis();
   while (1) {
@@ -478,17 +482,54 @@ uint32_t i2s_record(char *path) {
     i2s_read(Speak_I2S_NUMBER, (char *)(micbuff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
     if (bytes_read != DATA_SIZE) break;
     data_offset += DATA_SIZE;
-    if (data_offset>=MICBUFF) break;
+    if (data_offset >= size-DATA_SIZE) break;
   }
   AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
   InitI2SSpeakOrMic(MODE_SPK);
   // save to path
-  File fwp = fsp->open(path, FILE_WRITE);
-  fwp.write(micbuff, MICBUFF);
-  fwp.close();
+  SaveWav(path, micbuff, size);
   free(micbuff);
   return 0;
 }
+
+static const uint8_t wavHTemplate[] PROGMEM = { // Hardcoded simple WAV header with 0xffffffff lengths all around
+    0x52, 0x49, 0x46, 0x46, 0xff, 0xff, 0xff, 0xff, 0x57, 0x41, 0x56, 0x45,
+    0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x22, 0x56, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x04, 0x00, 0x10, 0x00,
+    0x64, 0x61, 0x74, 0x61, 0xff, 0xff, 0xff, 0xff };
+
+bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
+  File fwp = fsp->open(path, FILE_WRITE);
+  uint8_t wavHeader[sizeof(wavHTemplate)];
+  memcpy_P(wavHeader, wavHTemplate, sizeof(wavHTemplate));
+
+  uint8_t channels = 1;
+  uint32_t hertz = 44100;
+  uint8_t bps = 16;
+
+  wavHeader[22] = channels & 0xff;
+  wavHeader[23] = 0;
+  wavHeader[24] = hertz & 0xff;
+  wavHeader[25] = (hertz >> 8) & 0xff;
+  wavHeader[26] = (hertz >> 16) & 0xff;
+  wavHeader[27] = (hertz >> 24) & 0xff;
+  int byteRate = hertz * bps * channels / 8;
+  wavHeader[28] = byteRate & 0xff;
+  wavHeader[29] = (byteRate >> 8) & 0xff;
+  wavHeader[30] = (byteRate >> 16) & 0xff;
+  wavHeader[31] = (byteRate >> 24) & 0xff;
+  wavHeader[32] = channels * bps / 8;
+  wavHeader[33] = 0;
+  wavHeader[34] = bps;
+  wavHeader[35] = 0;
+
+  fwp.write(wavHeader, sizeof(wavHeader));
+
+  fwp.write(buff, size);
+  fwp.close();
+
+  return true;
+}
+
 
 /*********************************************************************************************\
  * Interface

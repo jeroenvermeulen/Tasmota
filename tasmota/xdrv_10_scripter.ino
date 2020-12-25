@@ -2793,7 +2793,9 @@ chknext:
         if (!strncmp(vname, "rec(", 4)) {
           char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
-          fvar = i2s_record(str);
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+          fvar = i2s_record(str, fvar);
           len++;
           goto exit;
         }
