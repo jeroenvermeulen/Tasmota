@@ -171,6 +171,9 @@ uint8_t spPAUSE1[]    PROGMEM = {0x00,0x00,0x00,0x00,0xFF,0x0F};
 void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) ;
 
 void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
+
+  if (!out) return;
+
   AUDIO_PWR_ON
   talkie = new AudioGeneratorTalkie();
   talkie->begin(nullptr, out);
@@ -284,15 +287,15 @@ uint32_t SpeakerMic(uint8_t spkr) {
     delete out;
     out = nullptr;
   }
+
+  i2s_driver_uninstall(Speak_I2S_NUMBER);
   if (spkr==MODE_SPK) {
-    i2s_driver_uninstall(Speak_I2S_NUMBER);
     out = new AudioOutputI2S();
     out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
     out->SetGain(((float)is2_volume/100.0)*4.0);
     out->stop();
   } else {
     // config mic
-    i2s_driver_uninstall(Speak_I2S_NUMBER);
     i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER),
         .sample_rate = MICSRATE,
@@ -301,7 +304,8 @@ uint32_t SpeakerMic(uint8_t spkr) {
         .communication_format = I2S_COMM_FORMAT_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
         .dma_buf_count = 2,
-        .dma_buf_len = 128,
+        //.dma_buf_len = 128,
+        .dma_buf_len = 1024,
     };
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
     err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
@@ -320,6 +324,26 @@ uint32_t SpeakerMic(uint8_t spkr) {
 
 #define DATA_SIZE 1024
 
+TaskHandle_t mic_task_h;
+uint32_t mic_size;
+uint8_t *mic_buff;
+char mic_path[32];
+
+void mic_task(void *arg){
+  uint32_t data_offset = 0;
+  while (1) {
+      uint32_t bytes_read;
+      i2s_read(Speak_I2S_NUMBER, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+      if (bytes_read != DATA_SIZE) break;
+      data_offset += DATA_SIZE;
+      if (data_offset >= mic_size-DATA_SIZE) break;
+  }
+  SpeakerMic(MODE_SPK);
+  SaveWav(mic_path, mic_buff, mic_size);
+  free(mic_buff);
+  vTaskDelete(mic_task_h);
+}
+
 uint32_t i2s_record(char *path, uint32_t secs) {
   esp_err_t err = ESP_OK;
 
@@ -329,26 +353,33 @@ uint32_t i2s_record(char *path, uint32_t secs) {
     return err;
   }
 
-  uint32_t size = secs * MICSRATE * 2;
+  mic_size = secs * MICSRATE * 2;
 
-  uint8_t *micbuff = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!micbuff) return 2;
+  mic_buff = (uint8_t*)heap_caps_malloc(mic_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!mic_buff) return 2;
+
+  if (*path=='+') {
+    path++;
+    strlcpy(mic_path, path , sizeof(mic_path));
+    xTaskCreatePinnedToCore(mic_task, "MIC", 4096, NULL, 3, &mic_task_h, 1);
+    return 0;
+  }
 
   uint32_t data_offset = 0;
   uint32_t stime=millis();
   while (1) {
     uint32_t bytes_read;
-    i2s_read(Speak_I2S_NUMBER, (char *)(micbuff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+    i2s_read(Speak_I2S_NUMBER, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
     if (bytes_read != DATA_SIZE) break;
     data_offset += DATA_SIZE;
-    if (data_offset >= size-DATA_SIZE) break;
+    if (data_offset >= mic_size-DATA_SIZE) break;
     delay(0);
   }
-  AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
+  //AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
   SpeakerMic(MODE_SPK);
   // save to path
-  SaveWav(path, micbuff, size);
-  free(micbuff);
+  SaveWav(mic_path, mic_buff, mic_size);
+  free(mic_buff);
   return 0;
 }
 
@@ -390,70 +421,6 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
   return true;
 }
 
-
-
-/*
-uint32_t InitI2SMic(void) {
-  esp_err_t err = ESP_OK;
-  i2s_driver_uninstall(Speak_I2S_NUMBER);
-  // The I2S config as per the example
-  const i2s_config_t i2s_config = {
-     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX), // Receive, not transfer
-     .sample_rate = 8000,                         // 16KHz
-     //.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
-     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
-     .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
-     .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,     // Interrupt level 1
-     .dma_buf_count = 8,                           // number of buffers
-     .dma_buf_len = BLOCK_SIZE                     // samples per buffer
-   };
-
-   i2s_pin_config_t tx_pin_config;
-   tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
-   tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
-   tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
-   tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
-   err = i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
-
-   err += i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
-
-   return err;
-}
-
-
-uint32_t InitI2SSpeakOrMic(int mode) {
-    esp_err_t err = ESP_OK;
-    i2s_driver_uninstall(Speak_I2S_NUMBER);
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
-        .sample_rate = 44100,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
-        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
-        .communication_format = I2S_COMM_FORMAT_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 2,
-        .dma_buf_len = 128,
-    };
-    if (mode == MODE_MIC) {
-        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
-      //  i2s_config.sample_rate = 8000;
-    } else {
-        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
-        i2s_config.use_apll = false;
-        i2s_config.tx_desc_auto_clear = true;
-    }
-    err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
-    i2s_pin_config_t tx_pin_config;
-    tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
-    tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
-    tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
-    tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
-    err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
-    err += i2s_set_clk(Speak_I2S_NUMBER, 44100, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-    return err;
-}
-*/
 #endif // ESP32
 
 #ifdef ESP32
@@ -501,6 +468,7 @@ void StatusCallback(void *cbData, int code, const char *string) {
 
 void Webradio(const char *url) {
   if (decoder || mp3) return;
+  if (!out) return;
   AUDIO_PWR_ON
   ifile = new AudioFileSourceICYStream(url);
   ifile->RegisterMetadataCB(MDCallback, NULL);
@@ -584,6 +552,7 @@ void I2S_WR_Show(void) {
 void Play_mp3(const char *path) {
 #if defined(USE_SCRIPT) && defined(USE_SCRIPT_FATFS)
   if (decoder || mp3) return;
+  if (!out) return;
 
   bool I2S_Task;
 
@@ -631,6 +600,8 @@ void mp3_delete(void) {
 #endif // ESP32
 
 void Say(char *text) {
+
+  if (!out) return;
 
   AUDIO_PWR_ON
 
