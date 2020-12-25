@@ -483,6 +483,7 @@ uint32_t i2s_record(char *path, uint32_t secs) {
     if (bytes_read != DATA_SIZE) break;
     data_offset += DATA_SIZE;
     if (data_offset >= size-DATA_SIZE) break;
+    delay(0);
   }
   AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
   InitI2SSpeakOrMic(MODE_SPK);
