@@ -3,3 +3,4 @@
 
 DevNullOut silencedLogger;
 Print* audioLogger = &silencedLogger;
+//Print* audioLogger = &Serial;

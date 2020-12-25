@@ -120,6 +120,12 @@ AudioGeneratorTalkie *talkie = nullptr;
 #undef DAC_IIS_DOUT
 #define DAC_IIS_DOUT      33
 #endif
+
+#ifndef DAC_IIS_DIN
+#undef DAC_IIS_DIN
+#define DAC_IIS_DIN      34
+#endif
+
 #endif  // ESP32
 
 #ifdef SAY_TIME
@@ -258,6 +264,197 @@ void I2S_Init(void) {
 #endif // USE_WEBRADIO
 #endif // ESP32
 }
+
+
+
+#ifdef ESP32
+#define MODE_MIC 0
+#define MODE_SPK 1
+#define Speak_I2S_NUMBER I2S_NUM_0
+//#define MICSRATE 44100
+#define MICSRATE 16000
+
+#include <driver/i2s.h>
+
+uint32_t SpeakerMic(uint8_t spkr) {
+  esp_err_t err = ESP_OK;
+
+  if (out) {
+    out->stop();
+    delete out;
+    out = nullptr;
+  }
+  if (spkr==MODE_SPK) {
+    i2s_driver_uninstall(Speak_I2S_NUMBER);
+    out = new AudioOutputI2S();
+    out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+    out->SetGain(((float)is2_volume/100.0)*4.0);
+    out->stop();
+  } else {
+    // config mic
+    i2s_driver_uninstall(Speak_I2S_NUMBER);
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
+        .sample_rate = MICSRATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+        .communication_format = I2S_COMM_FORMAT_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+        .dma_buf_count = 2,
+        .dma_buf_len = 128,
+    };
+    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+    err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
+
+    i2s_pin_config_t tx_pin_config;
+    tx_pin_config.bck_io_num = DAC_IIS_BCK;
+    tx_pin_config.ws_io_num = DAC_IIS_WS;
+    tx_pin_config.data_out_num = DAC_IIS_DOUT;
+    tx_pin_config.data_in_num = DAC_IIS_DIN;
+    err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+
+    err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  }
+  return err;
+}
+
+#define DATA_SIZE 1024
+
+uint32_t i2s_record(char *path, uint32_t secs) {
+  esp_err_t err = ESP_OK;
+
+  err = SpeakerMic(MODE_MIC);
+  if (err) {
+    SpeakerMic(MODE_SPK);
+    return err;
+  }
+
+  uint32_t size = secs * MICSRATE * 2;
+
+  uint8_t *micbuff = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!micbuff) return 2;
+
+  uint32_t data_offset = 0;
+  uint32_t stime=millis();
+  while (1) {
+    uint32_t bytes_read;
+    i2s_read(Speak_I2S_NUMBER, (char *)(micbuff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+    if (bytes_read != DATA_SIZE) break;
+    data_offset += DATA_SIZE;
+    if (data_offset >= size-DATA_SIZE) break;
+    delay(0);
+  }
+  AddLog_P(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
+  SpeakerMic(MODE_SPK);
+  // save to path
+  SaveWav(path, micbuff, size);
+  free(micbuff);
+  return 0;
+}
+
+static const uint8_t wavHTemplate[] PROGMEM = { // Hardcoded simple WAV header with 0xffffffff lengths all around
+    0x52, 0x49, 0x46, 0x46, 0xff, 0xff, 0xff, 0xff, 0x57, 0x41, 0x56, 0x45,
+    0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x22, 0x56, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x04, 0x00, 0x10, 0x00,
+    0x64, 0x61, 0x74, 0x61, 0xff, 0xff, 0xff, 0xff };
+
+bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
+  File fwp = fsp->open(path, FILE_WRITE);
+  uint8_t wavHeader[sizeof(wavHTemplate)];
+  memcpy_P(wavHeader, wavHTemplate, sizeof(wavHTemplate));
+
+  uint8_t channels = 1;
+  uint32_t hertz = MICSRATE;
+  uint8_t bps = 16;
+
+  wavHeader[22] = channels & 0xff;
+  wavHeader[23] = 0;
+  wavHeader[24] = hertz & 0xff;
+  wavHeader[25] = (hertz >> 8) & 0xff;
+  wavHeader[26] = (hertz >> 16) & 0xff;
+  wavHeader[27] = (hertz >> 24) & 0xff;
+  int byteRate = hertz * bps * channels / 8;
+  wavHeader[28] = byteRate & 0xff;
+  wavHeader[29] = (byteRate >> 8) & 0xff;
+  wavHeader[30] = (byteRate >> 16) & 0xff;
+  wavHeader[31] = (byteRate >> 24) & 0xff;
+  wavHeader[32] = channels * bps / 8;
+  wavHeader[33] = 0;
+  wavHeader[34] = bps;
+  wavHeader[35] = 0;
+
+  fwp.write(wavHeader, sizeof(wavHeader));
+
+  fwp.write(buff, size);
+  fwp.close();
+
+  return true;
+}
+
+
+
+/*
+uint32_t InitI2SMic(void) {
+  esp_err_t err = ESP_OK;
+  i2s_driver_uninstall(Speak_I2S_NUMBER);
+  // The I2S config as per the example
+  const i2s_config_t i2s_config = {
+     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX), // Receive, not transfer
+     .sample_rate = 8000,                         // 16KHz
+     //.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
+     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
+     .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
+     .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,     // Interrupt level 1
+     .dma_buf_count = 8,                           // number of buffers
+     .dma_buf_len = BLOCK_SIZE                     // samples per buffer
+   };
+
+   i2s_pin_config_t tx_pin_config;
+   tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
+   tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
+   tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
+   tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
+   err = i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+
+   err += i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
+
+   return err;
+}
+
+
+uint32_t InitI2SSpeakOrMic(int mode) {
+    esp_err_t err = ESP_OK;
+    i2s_driver_uninstall(Speak_I2S_NUMBER);
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
+        .sample_rate = 44100,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
+        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+        .communication_format = I2S_COMM_FORMAT_I2S,
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+        .dma_buf_count = 2,
+        .dma_buf_len = 128,
+    };
+    if (mode == MODE_MIC) {
+        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+      //  i2s_config.sample_rate = 8000;
+    } else {
+        i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
+        i2s_config.use_apll = false;
+        i2s_config.tx_desc_auto_clear = true;
+    }
+    err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
+    i2s_pin_config_t tx_pin_config;
+    tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
+    tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
+    tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
+    tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
+    err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+    err += i2s_set_clk(Speak_I2S_NUMBER, 44100, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    return err;
+}
+*/
+#endif // ESP32
 
 #ifdef ESP32
 TaskHandle_t mp3_task_h;
