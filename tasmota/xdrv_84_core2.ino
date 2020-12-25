@@ -193,14 +193,10 @@ void CORE2_DoShutdown(void) {
   if (core2_globs.shutdownseconds > 0) {
     core2_globs.Rtc.SetAlarmIRQ(core2_globs.shutdownseconds);
   } else {
-    RTC_DateTypeDef wdt;
     RTC_TimeTypeDef wut;
-    wdt.WeekDay = RtcTime.day_of_week;
-    wdt.Date = RtcTime.day_of_month;
     wut.Hours = core2_globs.wakeup_hour;
     wut.Minutes = core2_globs.wakeup_minute;
-    wut.Seconds = 0;
-    core2_globs.Rtc.SetAlarmIRQ(wdt, wut);
+    core2_globs.Rtc.SetAlarmIRQ(wut);
   }
   delay(10);
   core2_globs.Axp.PowerOff();
