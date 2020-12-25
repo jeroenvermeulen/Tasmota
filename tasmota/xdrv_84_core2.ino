@@ -402,6 +402,7 @@ const int BLOCK_SIZE = 1024;
 
 uint32_t InitI2SMic(void) {
   esp_err_t err = ESP_OK;
+  i2s_driver_uninstall(Speak_I2S_NUMBER);
   // The I2S config as per the example
   const i2s_config_t i2s_config = {
      .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX), // Receive, not transfer
