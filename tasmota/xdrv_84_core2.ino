@@ -19,8 +19,8 @@
 
 /* remaining work:
 
-i2s microphone, at least as loudness sensor
-rtc use after reboot, sync with internet on regular intervals.
+i2s microphone as loudness sensor
+rtc better sync
 
 */
 
