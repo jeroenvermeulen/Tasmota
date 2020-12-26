@@ -291,18 +291,20 @@ void MqttUnsubscribe(const char *topic)
   MqttUnsubscribeLib(topic);
 }
 
-void MqttPublishLogging(const char *mxtime)
-{
-  char saved_mqtt_data[strlen(TasmotaGlobal.mqtt_data) +1];
-  memcpy(saved_mqtt_data, TasmotaGlobal.mqtt_data, sizeof(saved_mqtt_data));
+void MqttPublishLoggingAsync(bool refresh) {
+  static uint32_t index = 1;
 
-//    ResponseTime_P(PSTR(",\"Log\":{\"%s\"}}"), TasmotaGlobal.log_data);  // Will fail as some messages contain JSON
-  Response_P(PSTR("%s%s"), mxtime, TasmotaGlobal.log_data);            // No JSON and ugly!!
-  char stopic[TOPSZ];
-  GetTopic_P(stopic, STAT, TasmotaGlobal.mqtt_topic, PSTR("LOGGING"));
-  MqttPublishLib(stopic, false);
+  if (!Settings.mqttlog_level || !Settings.flag.mqtt_enabled) { return; }  // SetOption3 - Enable MQTT
+  if (refresh && !NeedLogRefresh(Settings.mqttlog_level, index)) { return; }
 
-  memcpy(TasmotaGlobal.mqtt_data, saved_mqtt_data, sizeof(saved_mqtt_data));
+  char* line;
+  size_t len;
+  while (GetLog(Settings.mqttlog_level, &index, &line, &len)) {
+    strlcpy(TasmotaGlobal.mqtt_data, line, len);  // No JSON and ugly!!
+    char stopic[TOPSZ];
+    GetTopic_P(stopic, STAT, TasmotaGlobal.mqtt_topic, PSTR("LOGGING"));
+    MqttPublishLib(stopic, false);
+  }
 }
 
 void MqttPublish(const char* topic, bool retained)
@@ -329,13 +331,14 @@ void MqttPublish(const char* topic, bool retained)
     }
   }
 
-  snprintf_P(TasmotaGlobal.log_data, sizeof(TasmotaGlobal.log_data), PSTR("%s%s = %s"), slog_type, (Settings.flag.mqtt_enabled) ? topic : strrchr(topic,'/')+1, TasmotaGlobal.mqtt_data);  // SetOption3 - Enable MQTT
-  if (strlen(TasmotaGlobal.log_data) >= (sizeof(TasmotaGlobal.log_data) - strlen(sretained) -1)) {
-    TasmotaGlobal.log_data[sizeof(TasmotaGlobal.log_data) - strlen(sretained) -5] = '\0';
-    snprintf_P(TasmotaGlobal.log_data, sizeof(TasmotaGlobal.log_data), PSTR("%s ..."), TasmotaGlobal.log_data);
+  char log_data[LOGSZ];
+  snprintf_P(log_data, sizeof(log_data), PSTR("%s%s = %s"), slog_type, (Settings.flag.mqtt_enabled) ? topic : strrchr(topic,'/')+1, TasmotaGlobal.mqtt_data);  // SetOption3 - Enable MQTT
+  if (strlen(log_data) >= (sizeof(log_data) - strlen(sretained) -1)) {
+    log_data[sizeof(log_data) - strlen(sretained) -5] = '\0';
+    snprintf_P(log_data, sizeof(log_data), PSTR("%s ..."), log_data);
   }
-  snprintf_P(TasmotaGlobal.log_data, sizeof(TasmotaGlobal.log_data), PSTR("%s%s"), TasmotaGlobal.log_data, sretained);
-  AddLog(LOG_LEVEL_INFO);
+  snprintf_P(log_data, sizeof(log_data), PSTR("%s%s"), log_data, sretained);
+  AddLogData(LOG_LEVEL_INFO, log_data);
 
   if (Settings.ledstate &0x04) {
     TasmotaGlobal.blinks++;

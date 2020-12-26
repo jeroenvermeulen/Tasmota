@@ -127,7 +127,7 @@ enum Cx_cluster_short {
   Cx0010, Cx0011, Cx0012, Cx0013, Cx0014, Cx001A, Cx0020, Cx0100,
   Cx0101, Cx0102, Cx0201, Cx0300, Cx0400, Cx0401, Cx0402, Cx0403,
   Cx0404, Cx0405, Cx0406, Cx0500, Cx0702, Cx0B01, Cx0B04, Cx0B05,
-  CxEF00, CxFCCC,
+  CxEF00, CxFCC0, CxFCCC,
 };
 
 const uint16_t Cx_cluster[] PROGMEM = {
@@ -136,7 +136,7 @@ const uint16_t Cx_cluster[] PROGMEM = {
   0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x001A, 0x0020, 0x0100,
   0x0101, 0x0102, 0x0201, 0x0300, 0x0400, 0x0401, 0x0402, 0x0403,
   0x0404, 0x0405, 0x0406, 0x0500, 0x0702, 0x0B01, 0x0B04, 0x0B05,
-  0xEF00, 0xFCCC,
+  0xEF00, 0xFCC0, 0xFCCC,
 };
 
 uint16_t CxToCluster(uint8_t cx) {
@@ -466,6 +466,13 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zuint8,   Cx0201, 0x4001, Z_(ValvePosition),         Cm1, 0 },
   { Zuint8,   Cx0201, 0x4002, Z_(EurotronicErrors),      Cm1, 0 },
   { Zint16,   Cx0201, 0x4003, Z_(CurrentTemperatureSetPoint), Cm_100, 0 },
+  { Zuint24,  Cx0201, 0x4008, Z_(EurotronicHostFlags),   Cm1, 0 },
+  // below are synthetic virtual attributes used to decode EurotronicHostFlags
+  // Last byte acts as a field mask for the lowest byte value
+  { Zbool,    Cx0201, 0xF002, Z_(TRVMirrorDisplay),      Cm1, 0 },
+  { Zbool,    Cx0201, 0xF004, Z_(TRVBoost),              Cm1, 0 },
+  { Zbool,    Cx0201, 0xF010, Z_(TRVWindowOpen),         Cm1, 0 },
+  { Zbool,    Cx0201, 0xF080, Z_(TRVChildProtection),    Cm1, 0 },
   // below are virtual attributes to simplify ZbData import/export
   { Zuint8,   Cx0201, 0xFFF0,  Z_(ThSetpoint),           Cm1 + Z_EXPORT_DATA, Z_MAPPING(Z_Data_Thermo, th_setpoint) },
   { Zint16,   Cx0201, 0xFFF1,  Z_(TempTarget),        Cm_100 + Z_EXPORT_DATA, Z_MAPPING(Z_Data_Thermo, temperature_target) },
@@ -618,21 +625,24 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Ztuya1,   CxEF00, 0x0112,  Z_(TuyaWindowDetection),  Cm1, 0 },
   { Ztuya1,   CxEF00, 0x0114,  Z_(TuyaValveDetection),   Cm1, 0 },
   { Ztuya1,   CxEF00, 0x0174,  Z_(TuyaAutoLock),         Cm1, 0 },
-  { Ztuya2,   CxEF00, 0x0202,  Z_(TuyaTempTarget),       Cm_10, 0 },
-  { Ztuya2,   CxEF00, 0x0203,  Z_(LocalTemperature),     Cm_10, 0 },  // will be overwritten by actual LocalTemperature
+  { Zint16,   CxEF00, 0x0202,  Z_(TuyaTempTarget),       Cm_10, Z_MAPPING(Z_Data_Thermo, temperature_target) },
+  { Zint16,   CxEF00, 0x0203,  Z_(LocalTemperature),     Cm_10, Z_MAPPING(Z_Data_Thermo, temperature) },  // will be overwritten by actual LocalTemperature
   { Ztuya2,   CxEF00, 0x0215,  Z_(TuyaBattery),          Cm1, 0 },   // TODO check equivalent?
   { Ztuya2,   CxEF00, 0x0266,  Z_(TuyaMinTemp),          Cm1, 0 },
   { Ztuya2,   CxEF00, 0x0267,  Z_(TuyaMaxTemp),          Cm1, 0 },
   { Ztuya2,   CxEF00, 0x0269,  Z_(TuyaBoostTime),        Cm1, 0 },
   { Ztuya2,   CxEF00, 0x026B,  Z_(TuyaComfortTemp),      Cm1, 0 },
   { Ztuya2,   CxEF00, 0x026C,  Z_(TuyaEcoTemp),          Cm1, 0 },
-  { Ztuya2,   CxEF00, 0x026D,  Z_(TuyaValvePosition),    Cm1, 0 },
+  { Zuint8,   CxEF00, 0x026D,  Z_(TuyaValvePosition),    Cm1, Z_MAPPING(Z_Data_Thermo, th_setpoint) },
   { Ztuya2,   CxEF00, 0x0272,  Z_(TuyaAwayTemp),         Cm1, 0 },
   { Ztuya2,   CxEF00, 0x0275,  Z_(TuyaAwayDays),         Cm1, 0 },
   { Ztuya4,   CxEF00, 0x0404,  Z_(TuyaPreset),           Cm1, 0 },
   { Ztuya4,   CxEF00, 0x0405,  Z_(TuyaFanMode),          Cm1, 0 },
   { Ztuya4,   CxEF00, 0x046A,  Z_(TuyaForceMode),        Cm1, 0 },
   { Ztuya4,   CxEF00, 0x046F,  Z_(TuyaWeekSelect),       Cm1, 0 },
+
+  // Aqara Opple spacific
+  { Zuint8,   CxFCC0, 0x0009,  Z_(OppleMode),            Cm1, 0 },
 
   // Terncy specific - 0xFCCC
   { Zuint16, CxFCCC, 0x001A,  Z_(TerncyDuration),        Cm1, 0 },
@@ -715,15 +725,19 @@ public:
     char hex_char[_payload.len()*2+2];
 		ToHex_P((unsigned char*)_payload.getBuffer(), _payload.len(), hex_char, sizeof(hex_char));
     Response_P(PSTR("{\"" D_JSON_ZIGBEEZCL_RECEIVED "\":{"
-                    "\"groupid\":%d," "\"clusterid\":%d," "\"srcaddr\":\"0x%04X\","
+                    "\"groupid\":%d," "\"clusterid\":\"0x%04X\"," "\"srcaddr\":\"0x%04X\","
                     "\"srcendpoint\":%d," "\"dstendpoint\":%d," "\"wasbroadcast\":%d,"
                     "\"" D_CMND_ZIGBEE_LINKQUALITY "\":%d," "\"securityuse\":%d," "\"seqnumber\":%d,"
-                    "\"fc\":\"0x%02X\",\"manuf\":\"0x%04X\",\"transact\":%d,"
+                    "\"fc\":\"0x%02X\","
+                    "\"frametype\":%d,\"direction\":%d,\"disableresp\":%d,"
+                    "\"manuf\":\"0x%04X\",\"transact\":%d,"
                     "\"cmdid\":\"0x%02X\",\"payload\":\"%s\"}}"),
                     _groupaddr, _cluster_id, _srcaddr,
                     _srcendpoint, _dstendpoint, _wasbroadcast,
                     _linkquality, _securityuse, _seqnumber,
-                    _frame_control, _manuf_code, _transact_seq, _cmd_id,
+                    _frame_control,
+                    _frame_control.b.frame_type, _frame_control.b.direction, _frame_control.b.disable_def_resp,
+                    _manuf_code, _transact_seq, _cmd_id,
                     hex_char);
     if (Settings.flag3.tuya_serial_mqtt_publish) {
       MqttPublishPrefixTopicRulesProcess_P(TELE, PSTR(D_RSLT_SENSOR));
@@ -769,8 +783,9 @@ public:
   void parseReadAttributesResponse(Z_attribute_list& attr_list);
   void parseReadConfigAttributes(Z_attribute_list& attr_list);
   void parseConfigAttributes(Z_attribute_list& attr_list);
+  void parseWriteAttributesResponse(Z_attribute_list& attr_list);
   void parseResponse(void);
-  void parseResponseOld(void);
+  void parseResponse_inner(uint8_t cmd, bool cluster_specific, uint8_t status);
   void parseClusterSpecificCommand(Z_attribute_list& attr_list);
 
   // synthetic attributes converters
@@ -876,6 +891,11 @@ int32_t encodeSingleAttribute(class SBuffer &buf, double val_d, const char *val_
       buf.add16(u32);
       break;
     // unisgned 32
+    case Zuint24:
+      buf.add16(u32);
+      buf.add8(u32 >> 16);
+      break;
+    // unisgned 24
     case Zuint32:     // uint32
     case Zdata32:     // data32
     case Zmap32:      // map32
@@ -968,6 +988,15 @@ uint32_t parseSingleAttribute(Z_attribute & attr, const SBuffer &buf,
         // i += 2;
         if (0xFFFF != uint16_val) {
           attr.setUInt(uint16_val);
+        }
+      }
+      break;
+    case Zuint24:
+      {
+        uint32_t uint24_val = buf.get16(i) + (buf.get8(i+2) >> 16);
+        // i += 3;
+        if (0xFFFFFF != uint24_val) {
+          attr.setUInt(uint24_val);
         }
       }
       break;
@@ -1277,15 +1306,24 @@ void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
         }
         break;
       case 0x02010008:    // Pi Heating Demand - solve Eutotronic bug
+      case 0x02014008:    // Eurotronic Host Flags decoding
         {
           const char * manufacturer_c = zigbee_devices.getManufacturerId(_srcaddr);  // null if unknown
           String manufacturerId((char*) manufacturer_c);
           if (manufacturerId.equals(F("Eurotronic"))) {
-            // Eurotronic does not report 0..100 but 0..255, including 255 which is normally an ivalid value
-            uint8_t valve = attr.getUInt();
-            if (attr.isNone()) { valve = 255; }
-            uint8_t valve_100 = changeUIntScale(valve, 0, 255, 0, 100);
-            attr.setUInt(valve_100);
+            if (ccccaaaa == 0x02010008) {
+              // Eurotronic does not report 0..100 but 0..255, including 255 which is normally an ivalid value
+              uint8_t valve = attr.getUInt();
+              if (attr.isNone()) { valve = 255; }
+              uint8_t valve_100 = changeUIntScale(valve, 0, 255, 0, 100);
+              attr.setUInt(valve_100);
+            } else if (ccccaaaa == 0x02014008) {
+              uint32_t mode = attr.getUInt();
+              if (mode & 0x02) { attr_list.addAttribute(0x0201, 0xF002).setUInt(1); }
+              if (mode & 0x04) { attr_list.addAttribute(0x0201, 0xF004).setUInt(1); }
+              if (mode & 0x10) { attr_list.addAttribute(0x0201, 0xF010).setUInt(1); }
+              if (mode & 0x80) { attr_list.addAttribute(0x0201, 0xF080).setUInt(1); }
+            }
           }
         }
         break;
@@ -1434,6 +1472,11 @@ void ZCLFrame::parseConfigAttributes(Z_attribute_list& attr_list) {
   attr_1.setStrRaw(attr_config_list.toString(true).c_str());
 }
 
+// ZCL_WRITE_ATTRIBUTES_RESPONSE
+void ZCLFrame::parseWriteAttributesResponse(Z_attribute_list& attr_list) {
+  parseResponse_inner(ZCL_WRITE_ATTRIBUTES_RESPONSE, false, _payload.get8(0));
+}
+
 // ZCL_READ_REPORTING_CONFIGURATION_RESPONSE
 void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
   uint32_t i = 0;
@@ -1521,12 +1564,8 @@ void ZCLFrame::parseReadAttributesResponse(Z_attribute_list& attr_list) {
   }
 }
 
-// ZCL_DEFAULT_RESPONSE
-void ZCLFrame::parseResponse(void) {
-  if (_payload.len() < 2) { return; }   // wrong format
-  uint8_t cmd = _payload.get8(0);
-  uint8_t status = _payload.get8(1);
 
+void ZCLFrame::parseResponse_inner(uint8_t cmd, bool cluster_specific, uint8_t status) {
   Z_attribute_list attr_list;
 
   // "Device"
@@ -1539,7 +1578,7 @@ void ZCLFrame::parseResponse(void) {
     attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_NAME)).setStr(friendlyName);
   }
   // "Command"
-  snprintf_P(s, sizeof(s), PSTR("%04X!%02X"), _cluster_id, cmd);
+  snprintf_P(s, sizeof(s), PSTR("%04X%c%02X"), _cluster_id, cluster_specific ? '!' : '_', cmd);
   attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_CMD)).setStr(s);
   // "Status"
   attr_list.addAttributePMEM(PSTR(D_JSON_ZIGBEE_STATUS)).setUInt(status);
@@ -1556,6 +1595,15 @@ void ZCLFrame::parseResponse(void) {
 
   Response_P(PSTR("{\"" D_JSON_ZIGBEE_RESPONSE "\":%s}"), attr_list.toString(true).c_str());
   MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_ZIGBEEZCL_RECEIVED));
+}
+
+// ZCL_DEFAULT_RESPONSE
+void ZCLFrame::parseResponse(void) {
+  if (_payload.len() < 2) { return; }   // wrong format
+  uint8_t cmd = _payload.get8(0);
+  uint8_t status = _payload.get8(1);
+
+  parseResponse_inner(cmd, true, status);
 }
 
 // Parse non-normalized attributes
@@ -1582,6 +1630,9 @@ void ZCLFrame::syntheticAnalogValue(Z_attribute_list &attr_list, class Z_attribu
   }
   if (modelId.startsWith(F("lumi.plug"))) {
     attr.setKeyId(0x0702, 0x0000);    // change to EnergyTotal
+  }
+  if (modelId.startsWith(F("lumi.ctrl"))) {
+    attr.setKeyId(0x0B04, 0x050B);    // change to ActivePower
   }
 }
 
@@ -1637,9 +1688,9 @@ void ZCLFrame::syntheticAqaraSensor(Z_attribute_list &attr_list, class Z_attribu
           } else if (0x66 == attrid) {
             attr_list.addAttribute(0x0403, 0x0000).setUInt((ival32 + 50) / 100);  // Pressure
           }
-        } else if (modelId.startsWith(F("lumi.plug"))) {
+        } else if (modelId.startsWith(F("lumi.plug")) || modelId.startsWith(F("lumi.ctrl"))) {
           if (0x64 == attrid) {
-            attr_list.addAttribute(0x0600, 0x0000).setInt(uval32);          // Power (on/off)
+            attr_list.addAttribute(0x0006, 0x0000).setInt(uval32);          // Power (on/off)
           } else if (0x98 == attrid) {
             attr_list.addAttribute(0x0B04, 0x050B).setInt(ival32);          // Active Power
           } else if (0x95 == attrid) {
@@ -1896,6 +1947,13 @@ void Z_postProcessAttributes(uint16_t shortaddr, uint16_t src_ep, class Z_attrib
         uint32_t uval32 = attr.getUInt();     // call converter to uint only once
         int32_t  ival32 = attr.getInt();     // call converter to int only once
         // AddLog_P(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_ZIGBEE "Mapping type=%d offset=%d zigbee_type=%02X value=%d\n"), (uint8_t) map_type, map_offset, zigbee_type, ival32);
+        switch (ccccaaaa) {
+          case 0xEF000202:
+          case 0xEF000203:    // need to convert Tuya temperatures from 1/10 to 1/00 °C
+            ival32 = ival32 * 10;
+            break;
+        }
+
         switch (zigbee_type) {
           case Zenum8:
           case Zmap8:

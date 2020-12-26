@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v9.0.0.3
+ * Updated until v9.2.0.1
 \*********************************************************************/
 
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -460,6 +460,32 @@
 #define D_KNX_TX_SCENE "KNX SCENE TX"
 #define D_KNX_RX_SCENE "KNX SCENE RX"
 
+// xdrv_23_zigbee
+#define D_ZIGBEE_PERMITJOIN_ACTIVE "Gerätekopplung erlaubt"
+#define D_ZIGBEE_MAPPING_TITLE "Tasmota Zigbee Karte"
+#define D_ZIGBEE_NOT_STARTED "Zigbee nicht gestartet"
+#define D_ZIGBEE_MAPPING_IN_PROGRESS_SEC "Karte in Erstellung (%d s. verbleibend)"
+#define D_ZIGBEE_MAPPING_NOT_PRESENT "Keine Karte"
+#define D_ZIGBEE_MAP_REFRESH "Zigbee Karte erneuern"
+#define D_ZIGBEE_MAP   "Zigbee Karte"
+#define D_ZIGBEE_PERMITJOIN "Zigbee Kopplung ein"
+#define D_ZIGBEE_GENERATE_KEY "Erzeuge zufälligen Zigbee Netzwerkschlüssel"
+#define D_ZIGBEE_UNKNOWN_DEVICE "Unbekanntes Gerät"
+#define D_ZIGBEE_UNKNOWN_ATTRIBUTE "Unbekanntes Attribut"
+#define D_ZIGBEE_INVALID_PARAM "Ungültiger Parameter"
+#define D_ZIGBEE_MISSING_PARAM "Fehlende Parameter"
+#define D_ZIGBEE_UNKNWON_ATTRIBUTE "Unbekannter Attribut Name (ignoriert): %s"
+#define D_ZIGBEE_TOO_MANY_CLUSTERS "Nur eine Cluster id pro Kommando"
+#define D_ZIGBEE_WRONG_DELIMITER "Falscher Delimeter für Payload"
+#define D_ZIGBEE_UNRECOGNIZED_COMMAND "Unerkanntes zigbee Kommando: %s"
+#define D_ZIGBEE_TOO_MANY_COMMANDS "Nur 1 Kommando zulässig (%d)"
+#define D_ZIGBEE_NO_ATTRIBUTE "Kein Attribut in der Liste"
+#define D_ZIGBEE_UNSUPPORTED_ATTRIBUTE_TYPE "Nicht unterstützter Attribut Typ"
+#define D_ZIGBEE_JSON_REQUIRED "Konfiguration muss JSON basiert sein"
+#define D_ZIGBEE_RESET_1_OR_2 "1 oder 2 für Reset"
+#define D_ZIGBEE_EEPROM_FOUND_AT_ADDRESS "ZBBridge EEPROM gefunden auf Addresse"
+#define D_ZIGBEE_RANDOMIZING_ZBCONFIG "Zufällige Zigbee Parameter erstellt, Überprüfung mit 'ZbConfig'"
+
 // xdrv_03_energy.ino
 #define D_ENERGY_TODAY "Energie heute"
 #define D_ENERGY_YESTERDAY "Energie gestern"
@@ -561,6 +587,7 @@
 // tasmota_template.h - keep them as short as possible to be able to fit them in GUI drop down box
 #define D_SENSOR_NONE          "None"
 #define D_SENSOR_USER          "User"
+#define D_SENSOR_OPTION        "Option"
 #define D_SENSOR_DHT11         "DHT11"
 #define D_SENSOR_AM2301        "AM2301"
 #define D_SENSOR_SI7021        "SI7021"
@@ -613,6 +640,7 @@
 #define D_SENSOR_TM1638_STB    "TM16 STB"
 #define D_SENSOR_HX711_SCK     "HX711 SCK"
 #define D_SENSOR_HX711_DAT     "HX711 DAT"
+#define D_SENSOR_FTC532        "FTC532"
 #define D_SENSOR_TX2X_TX       "TX2x"
 #define D_SENSOR_RFSEND        "RFSend"
 #define D_SENSOR_RFRECV        "RFrecv"
@@ -646,6 +674,8 @@
 #define D_SENSOR_SM16716_CLK   "SM16716 CLK"
 #define D_SENSOR_SM16716_DAT   "SM16716 DAT"
 #define D_SENSOR_SM16716_POWER "SM16716 PWR"
+#define D_SENSOR_P9813_CLK     "P9813 Clk"
+#define D_SENSOR_P9813_DAT     "P9813 Dat"
 #define D_SENSOR_MY92X1_DI     "MY92x1 DI"
 #define D_SENSOR_MY92X1_DCKI   "MY92x1 DCKI"
 #define D_SENSOR_ARIRFRCV      "ALux IrRcv"

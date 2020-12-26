@@ -107,6 +107,12 @@ String EthernetMacAddress(void);
 #define ARDUINO_CORE_RELEASE        ARDUINO_ESP32_RELEASE
 #endif  // ARDUINO_ESP32_RELEASE
 
+#define USE_TFS
+
+#ifdef USE_SCRIPT
+#undef USE_TFS
+#endif  // USE_SCRIPT
+
 // Hardware has no ESP32
 #undef USE_TUYA_DIMMER
 #undef USE_PWM_DIMMER
@@ -151,6 +157,13 @@ String EthernetMacAddress(void);
 #endif
 #ifdef USE_TASMOTA_SLAVE_SERIAL_SPEED
 #define USE_TASMOTA_CLIENT_SERIAL_SPEED USE_TASMOTA_SLAVE_SERIAL_SPEED
+#endif
+
+#ifdef USE_SCRIPT
+#define USE_UNISHOX_COMPRESSION                // Add support for string compression
+#endif
+#ifdef USE_ZIGBEE
+#define USE_UNISHOX_COMPRESSION                // Add support for string compression
 #endif
 
                                                // See https://github.com/esp8266/Arduino/pull/4889
@@ -203,11 +216,7 @@ String EthernetMacAddress(void);
 #define WS2812_LEDS                 30         // [Pixels] Number of LEDs
 #endif
 
-//#ifdef USE_MQTT_TLS                            // Set to 4000 on 20200922 per #9305
-//  const uint16_t WEB_LOG_SIZE = 2000;          // Max number of characters in weblog
-//#else
-  const uint16_t WEB_LOG_SIZE = 4000;          // Max number of characters in weblog
-//#endif
+const uint16_t LOG_BUFFER_SIZE = 4000;         // Max number of characters in logbuffer used by weblog, syslog and mqttlog
 
 #if defined(ARDUINO_ESP8266_RELEASE_2_3_0) || defined(ARDUINO_ESP8266_RELEASE_2_4_0) || defined(ARDUINO_ESP8266_RELEASE_2_4_1) || defined(ARDUINO_ESP8266_RELEASE_2_4_2) || defined(ARDUINO_ESP8266_RELEASE_2_5_0) || defined(ARDUINO_ESP8266_RELEASE_2_5_1) || defined(ARDUINO_ESP8266_RELEASE_2_5_2)
   #error "Arduino ESP8266 Core versions before 2.7.1 are not supported"

@@ -43,9 +43,7 @@ struct  {
 
 void MLX90614_Init(void)
 {
-  if (!I2cSetDevice(I2_ADR_IRT)) {
-    return;
-  }
+  if (!I2cSetDevice(I2_ADR_IRT)) { return; }
   I2cSetActiveFound(I2_ADR_IRT, "MLX90614");
   mlx90614.ready = true;
 }

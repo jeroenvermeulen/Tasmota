@@ -347,7 +347,7 @@ void mic_task(void *arg){
 uint32_t i2s_record(char *path, uint32_t secs) {
   esp_err_t err = ESP_OK;
 
-  if (decoder || mp3) return;
+  if (decoder || mp3) return 0;
 
   err = SpeakerMic(MODE_MIC);
   if (err) {

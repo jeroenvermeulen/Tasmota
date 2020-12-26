@@ -129,12 +129,55 @@ enum UserSelectablePins {
   GPIO_AS608_TX, GPIO_AS608_RX,        // Serial interface AS608 / R503
   GPIO_SHELLY_DIMMER_BOOT0, GPIO_SHELLY_DIMMER_RST_INV,
   GPIO_RC522_RST,                      // RC522 reset
+  GPIO_P9813_CLK, GPIO_P9813_DAT,      // P9813 Clock and Data
+  GPIO_OPTION_A,                       // Specific device options to be served in code
+  GPIO_FTC532,                         // FTC532 touch ctrlr serial input
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
   GPIO_FIX_START = 2046,
   GPIO_USER,           // User configurable needs to be 2047
   GPIO_MAX };
+
+#define MAX_OPTIONS_A  2                   // Increase if more bits are used from GpioOptionABits
+
+typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
+  uint32_t data;                           // Allow bit manipulation using SetOption
+  struct {                                 // GPIO Option_A1 .. Option_A32
+    uint32_t pwm1_input : 1;               // bit 0 (v9.2.0.1)   - Option_A1 - (Light) Change PWM1 to input on power off and no fade running (1)
+    uint32_t spare01 : 1;                  // bit 1
+    uint32_t spare02 : 1;                  // bit 2
+    uint32_t spare03 : 1;                  // bit 3
+    uint32_t spare04 : 1;                  // bit 4
+    uint32_t spare05 : 1;                  // bit 5
+    uint32_t spare06 : 1;                  // bit 6
+    uint32_t spare07 : 1;                  // bit 7
+    uint32_t spare08 : 1;                  // bit 8
+    uint32_t spare09 : 1;                  // bit 9
+    uint32_t spare10 : 1;                  // bit 10
+    uint32_t spare11 : 1;                  // bit 11
+    uint32_t spare12 : 1;                  // bit 12
+    uint32_t spare13 : 1;                  // bit 13
+    uint32_t spare14 : 1;                  // bit 14
+    uint32_t spare15 : 1;                  // bit 15
+    uint32_t spare16 : 1;                  // bit 16
+    uint32_t spare17 : 1;                  // bit 17
+    uint32_t spare18 : 1;                  // bit 18
+    uint32_t spare19 : 1;                  // bit 19
+    uint32_t spare20 : 1;                  // bit 20
+    uint32_t spare21 : 1;                  // bit 21
+    uint32_t spare22 : 1;                  // bit 22
+    uint32_t spare23 : 1;                  // bit 23
+    uint32_t spare24 : 1;                  // bit 24
+    uint32_t spare25 : 1;                  // bit 25
+    uint32_t spare26 : 1;                  // bit 26
+    uint32_t spare27 : 1;                  // bit 27
+    uint32_t spare28 : 1;                  // bit 28
+    uint32_t spare29 : 1;                  // bit 29
+    uint32_t spare30 : 1;                  // bit 30
+    uint32_t spare31 : 1;                  // bit 31
+  };
+} GpioOptionABits;
 
 // Text in webpage Module Parameters and commands GPIOS and GPIO
 const char kSensorNames[] PROGMEM =
@@ -237,7 +280,10 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_WE517_TX "|" D_SENSOR_WE517_RX "|"
   D_SENSOR_AS608_TX "|" D_SENSOR_AS608_RX "|"
   D_SENSOR_SHELLY_DIMMER_BOOT0 "|" D_SENSOR_SHELLY_DIMMER_RST_INV "|"
-  D_SENSOR_RC522_RST
+  D_SENSOR_RC522_RST "|"
+  D_SENSOR_P9813_CLK "|" D_SENSOR_P9813_DAT "|"
+  D_SENSOR_OPTION "_a|"
+  D_SENSOR_FTC532
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -247,9 +293,11 @@ const char kSensorNamesFixed[] PROGMEM =
 #define MAX_A4988_MSS    3
 #define MAX_WEBCAM_DATA  8
 #define MAX_WEBCAM_HSD   3
+#define MAX_SM2135_DAT   4
 
 const uint16_t kGpioNiceList[] PROGMEM = {
   GPIO_NONE,                            // Not used
+  AGPIO(GPIO_OPTION_A) + MAX_OPTIONS_A, // Device specific options
   AGPIO(GPIO_KEY1) + MAX_KEYS,          // Buttons
   AGPIO(GPIO_KEY1_NP) + MAX_KEYS,
   AGPIO(GPIO_KEY1_INV) + MAX_KEYS,
@@ -279,6 +327,9 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_LEDLNK_INV),               // Inverted link led
   AGPIO(GPIO_OUTPUT_HI),                // Fixed output high
   AGPIO(GPIO_OUTPUT_LO),                // Fixed output low
+#ifdef USE_FTC532
+  AGPIO(GPIO_FTC532),                   // FTC532 touch input
+#endif
 
 /*-------------------------------------------------------------------------------------------*\
  * Protocol specifics
@@ -336,7 +387,12 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 
 #ifdef USE_LIGHT
 #ifdef USE_WS2812
+#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
+  AGPIO(GPIO_P9813_CLK),      // P9813 CLOCK
+  AGPIO(GPIO_P9813_DAT),      // P9813 DATA
+#else
   AGPIO(GPIO_WS2812),         // WS2812 Led string
+#endif  // NEO_HW_P9813
 #endif
 #ifdef USE_ARILUX_RF
   AGPIO(GPIO_ARIRFRCV),       // AriLux RF Receive input
@@ -352,8 +408,8 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_SM16716_SEL),    // SM16716 SELECT
 #endif  // USE_SM16716
 #ifdef USE_SM2135
-  AGPIO(GPIO_SM2135_CLK),     // SM2135 CLOCK
-  AGPIO(GPIO_SM2135_DAT),     // SM2135 DATA
+  AGPIO(GPIO_SM2135_CLK),                    // SM2135 CLOCK
+  AGPIO(GPIO_SM2135_DAT) + MAX_SM2135_DAT,   // SM2135 DATA
 #endif  // USE_SM2135
 #ifdef USE_TUYA_MCU
   AGPIO(GPIO_TUYA_TX),        // Tuya Serial interface

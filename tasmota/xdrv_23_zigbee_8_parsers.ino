@@ -652,6 +652,8 @@ void Z_AutoBindDefer(uint16_t shortaddr, uint8_t endpoint, const SBuffer &buf,
   if (bitRead(cluster_map, Z_ClusterToCxBinding(0x0500))) {
     // send a read command to cluster 0x0500, attribute 0x0001 (ZoneType) - to read the type of sensor
     zigbee_devices.queueTimer(shortaddr, 0 /* groupaddr */, 2000, 0x0500, endpoint, Z_CAT_READ_ATTRIBUTE, 0x0001, &Z_SendSingleAttributeRead);
+    zigbee_devices.queueTimer(shortaddr, 0 /* groupaddr */, 2000, 0x0500, endpoint, Z_CAT_CIE_ATTRIBUTE, 0 /* value */, &Z_WriteCIEAddress);
+    zigbee_devices.queueTimer(shortaddr, 0 /* groupaddr */, 2000, 0x0500, endpoint, Z_CAT_CIE_ENROLL, 1 /* zone */, &Z_SendCIEZoneEnrollResponse);
   }
 
   // enqueue bind requests
@@ -1059,6 +1061,7 @@ int32_t Z_Mgmt_Lqi_Bind_Rsp(int32_t res, const class SBuffer &buf, boolean lqi) 
 
   // device is reachable
   zigbee_devices.deviceWasReached(shortaddr);
+  bool non_empty = false;     // check whether the response contains relevant information
 
   const char * friendlyName = zigbee_devices.getFriendlyName(shortaddr);
 
@@ -1089,6 +1092,7 @@ int32_t Z_Mgmt_Lqi_Bind_Rsp(int32_t res, const class SBuffer &buf, boolean lqi) 
       uint8_t     m_lqi       = buf.get8(idx + 21);
       idx += 22;
 
+      non_empty = true;
       if (i > 0) {
         ResponseAppend_P(PSTR(","));
       }
@@ -1161,6 +1165,7 @@ int32_t Z_Mgmt_Lqi_Bind_Rsp(int32_t res, const class SBuffer &buf, boolean lqi) 
         break;                                      // abort for any other value since we don't know the length of the field
       }
 
+      non_empty = true;
       if (i > 0) {
         ResponseAppend_P(PSTR(","));
       }
@@ -1180,7 +1185,8 @@ int32_t Z_Mgmt_Lqi_Bind_Rsp(int32_t res, const class SBuffer &buf, boolean lqi) 
   MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_ZIGBEE_MAP));
 
   // Check if there are more values waiting, if so re-send a new request to get other values
-  if (start + len < total) {
+  // Only send a new request if the current was non-empty. This avoids an infinite loop if the device announces more slots that it actually has.
+  if ((non_empty) && (start + len < total)) {
     // there are more values to read
 #ifdef USE_ZIGBEE_ZNP
       Z_Send_State_or_Map(shortaddr, start + len, lqi ? ZDO_MGMT_LQI_REQ : ZDO_MGMT_BIND_REQ);
@@ -1342,7 +1348,7 @@ void Z_SendDeviceInfoRequest(uint16_t shortaddr) {
 }
 
 //
-// Send sing attribute read request in Timer
+// Send single attribute read request in Timer
 //
 void Z_SendSingleAttributeRead(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster, uint8_t endpoint, uint32_t value) {
   uint8_t transacid = zigbee_devices.getNextSeqNumber(shortaddr);
@@ -1360,6 +1366,56 @@ void Z_SendSingleAttributeRead(uint16_t shortaddr, uint16_t groupaddr, uint16_t 
       false /* discover route */,
     transacid,  /* zcl transaction id */
     InfoReq, sizeof(InfoReq)
+  }));
+}
+
+//
+// Write CIE address
+//
+void Z_WriteCIEAddress(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster, uint8_t endpoint, uint32_t value) {
+  uint8_t transacid = zigbee_devices.getNextSeqNumber(shortaddr);
+  SBuffer buf(12);
+  buf.add16(0x0010);    // attribute 0x0010
+  buf.add8(ZEUI64);
+  buf.add64(localIEEEAddr);
+
+  AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Writing CIE address"));
+  ZigbeeZCLSend_Raw(ZigbeeZCLSendMessage({
+    shortaddr,
+    0x0000, /* group */
+    0x0500 /*cluster*/,
+    endpoint,
+    ZCL_WRITE_ATTRIBUTES,
+    0x0000,  /* manuf */
+    false /* not cluster specific */,
+    true /* response */,
+    false /* discover route */,
+    transacid,  /* zcl transaction id */
+    buf.getBuffer(), buf.len()
+  }));
+}
+
+
+//
+// Write CIE address
+//
+void Z_SendCIEZoneEnrollResponse(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster, uint8_t endpoint, uint32_t value) {
+  uint8_t transacid = zigbee_devices.getNextSeqNumber(shortaddr);
+  uint8_t EnrollRSP[2] = { 0x00 /* Sucess */, Z_B0(value) /* ZoneID */ };
+
+  AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Sending Enroll Zone %d"), Z_B0(value));
+  ZigbeeZCLSend_Raw(ZigbeeZCLSendMessage({
+    shortaddr,
+    0x0000, /* group */
+    0x0500 /*cluster*/,
+    endpoint,
+    0x00,   // Zone Enroll Response
+    0x0000,  /* manuf */
+    true /* cluster specific */,
+    true /* response */,
+    false /* discover route */,
+    transacid,  /* zcl transaction id */
+    EnrollRSP, sizeof(EnrollRSP)
   }));
 }
 
@@ -1531,7 +1587,7 @@ int32_t EZ_ReceiveTCJoinHandler(int32_t res, const class SBuffer &buf) {
     Response_P(PSTR("{\"" D_JSON_ZIGBEE_STATE "\":{"
                     "\"Status\":%d,\"IEEEAddr\":\"0x%s\",\"ShortAddr\":\"0x%04X\""
                     ",\"ParentNetwork\":\"0x%04X\""
-                    ",\"Status\":%d,\"Decision\":%d"
+                    ",\"JoinStatus\":%d,\"Decision\":%d"
                     "}}"),
                     ZIGBEE_STATUS_DEVICE_INDICATION, hex, srcAddr, parentNw,
                     status, decision
@@ -1596,6 +1652,8 @@ void Z_IncomingMessage(class ZCLFrame &zcl_received) {
       zcl_received.parseReadConfigAttributes(attr_list);
     } else if ( (!zcl_received.isClusterSpecificCommand()) && (ZCL_CONFIGURE_REPORTING_RESPONSE == zcl_received.getCmdId())) {
       zcl_received.parseConfigAttributes(attr_list);
+    } else if ( (!zcl_received.isClusterSpecificCommand()) && (ZCL_WRITE_ATTRIBUTES_RESPONSE == zcl_received.getCmdId())) {
+      zcl_received.parseWriteAttributesResponse(attr_list);
     } else if (zcl_received.isClusterSpecificCommand()) {
       zcl_received.parseClusterSpecificCommand(attr_list);
     }
