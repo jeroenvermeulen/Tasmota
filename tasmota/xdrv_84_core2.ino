@@ -74,6 +74,8 @@ void CORE2_Module_Init(void) {
   I2cSetActiveFound(AXP_ADDR, "AXP192");
 
   core2_globs.Axp.SetAdcState(true);
+  // motor voltage
+  core2_globs.Axp.SetLDOVoltage(3,2000);
 
   core2_globs.Mpu.Init();
   I2cSetActiveFound(MPU6886_ADDRESS, "MPU6886");
@@ -93,13 +95,7 @@ void CORE2_Init(void) {
 
     TIME_T tmpTime;
     TasmotaGlobal.ntp_force_sync = true; //force to sync with ntp
-  //  Rtc.utc_time = ReadFromDS3231(); //we read UTC TIME from DS3231
-    // from this line, we just copy the function from "void RtcSecond()" at the support.ino ,line 2143 and above
-    // We need it to set rules etc.
     BreakTime(Rtc.utc_time, tmpTime);
-    if (Rtc.utc_time < START_VALID_TIME ) {
-      //ds3231ReadStatus = true; //if time in DS3231 is valid, do  not update again
-    }
     Rtc.daylight_saving_time = RuleToTime(Settings.tflag[1], RtcTime.year);
     Rtc.standard_time = RuleToTime(Settings.tflag[0], RtcTime.year);
     AddLog_P(LOG_LEVEL_INFO, PSTR("Set time from BM8563 to RTC (" D_UTC_TIME ") %s, (" D_DST_TIME ") %s, (" D_STD_TIME ") %s"),
@@ -135,7 +131,7 @@ const char HTTP_CORE2_MPU[] PROGMEM =
 
 
 void CORE2_loop(uint32_t flg) {
-  Sync_RTOS_TIME();
+
 }
 
 void CORE2_WebShow(uint32_t json) {
@@ -376,6 +372,8 @@ void CORE2_EverySecond(void) {
         CORE2_DoShutdown();
       }
     }
+
+    Sync_RTOS_TIME();
   }
 }
 
