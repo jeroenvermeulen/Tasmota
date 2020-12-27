@@ -55,6 +55,8 @@ struct CORE2_globs {
 struct CORE2_ADC {
   float vbus_v;
   float batt_v;
+  float vbus_c;
+  float batt_c;
   float temp;
   int16_t x;
   int16_t y;
@@ -119,7 +121,9 @@ void CORE2_audio_power(bool power) {
 #ifdef USE_WEBSERVER
 const char HTTP_CORE2[] PROGMEM =
  "{s}VBUS Voltage" "{m}%s V" "{e}"
+ "{s}VBUS Current" "{m}%s mA" "{e}"
  "{s}BATT Voltage" "{m}%s V" "{e}"
+ "{s}BATT Current" "{m}%s mA" "{e}"
  "{s}Chip Temperature" "{m}%s C" "{e}";
 #ifdef USE_MPU6886
 const char HTTP_CORE2_MPU[] PROGMEM =
@@ -138,20 +142,24 @@ void CORE2_WebShow(uint32_t json) {
 
   char vstring[32];
   char bvstring[32];
+  char cstring[32];
+  char bcstring[32];
   char tstring[32];
   dtostrfd(core2_adc.vbus_v, 3, vstring);
   dtostrfd(core2_adc.batt_v, 3, bvstring);
+  dtostrfd(core2_adc.vbus_c, 1, cstring);
+  dtostrfd(core2_adc.batt_c, 1, bcstring);
   dtostrfd(core2_adc.temp, 2, tstring);
 
   if (json) {
-    ResponseAppend_P(PSTR(",\"CORE2\":{\"VBV\":%s,\"BV\":%s,\"CT\":%s"), vstring, bvstring, tstring);
+    ResponseAppend_P(PSTR(",\"CORE2\":{\"VBV\":%s,\"BV\":%s,\"VBC\":%s,\"BC\":%s,\"CT\":%s"), vstring, cstring, bvstring, bcstring, tstring);
 
 #ifdef USE_MPU6886
     ResponseAppend_P(PSTR(",\"MPUX\":%d,\"MPUY\":%d,\"MPUZ\":%d"), core2_adc.x, core2_adc.y, core2_adc.z);
 #endif
     ResponseJsonEnd();
   } else {
-    WSContentSend_PD(HTTP_CORE2, vstring, bvstring, tstring);
+    WSContentSend_PD(HTTP_CORE2, vstring, cstring, bvstring, bcstring, tstring);
 
 #ifdef USE_MPU6886
     WSContentSend_PD(HTTP_CORE2_MPU, core2_adc.x, core2_adc.y, core2_adc.z);
@@ -371,10 +379,12 @@ void CORE2_EverySecond(void) {
   }
 }
 
-// currents are not supported by hardware implementation
 void CORE2_GetADC(void) {
     core2_adc.vbus_v = core2_globs.Axp.GetVBusVoltage();
     core2_adc.batt_v = core2_globs.Axp.GetBatVoltage();
+    core2_adc.vbus_c = core2_globs.Axp.GetVinCurrent();
+    core2_adc.batt_c = core2_globs.Axp.GetBatCurrent();
+
     core2_adc.temp = core2_globs.Axp.GetTempInAXP192();
 #ifdef USE_MPU6886
       float x;
