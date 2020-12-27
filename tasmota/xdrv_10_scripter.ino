@@ -6026,6 +6026,84 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 #endif //USE_SCRIPT_FATFS
 
+
+#define DEBUG_MQTT_EVENT
+
+uint32_t JsonParsePath(JsonParserObject *jobj, char *spath, char delim, float *nres, char *sres, uint32_t slen) {
+  uint32_t res = 0;
+  char *cp = spath;
+#ifdef DEBUG_MQTT_EVENT
+//  AddLog_P(LOG_LEVEL_INFO, PSTR("Script: parsing json key: %s from json: %s"), cp, jpath);
+#endif
+  JsonParserObject obj = *jobj;
+  JsonParserObject lastobj = obj;
+  char selem[32];
+  uint8_t aindex = 0;
+  String value = "";
+  while (1) {
+    // read next element
+    for (uint32_t sp=0; sp<sizeof(selem)-1; sp++) {
+      if (!*cp || *cp==delim) {
+        selem[sp] = 0;
+        cp++;
+        break;
+      }
+      selem[sp] = *cp++;
+    }
+#ifdef DEBUG_MQTT_EVENT
+    AddLog_P(LOG_LEVEL_INFO, PSTR("Script: cmp current key: %s"), selem);
+#endif
+    // check for array
+    char *sp = strchr(selem,'[');
+    if (sp) {
+      *sp = 0;
+      aindex = atoi(sp+1);
+    }
+
+    // now check element
+    obj = obj[selem];
+    if (!obj.isValid()) {
+#ifdef DEBUG_MQTT_EVENT
+      AddLog_P(LOG_LEVEL_INFO, PSTR("Script: obj invalid: %s"), selem);
+#endif
+      JsonParserToken tok = lastobj[selem];
+      if (tok.isValid()) {
+        if (tok.isArray()) {
+          JsonParserArray array = JsonParserArray(tok);
+          value = array[aindex].getStr();
+          if (array.isNum()) {
+            if (nres) *nres=tok.getFloat();
+            res = 1;
+          } else {
+            res = 2;
+          }
+        } else {
+          value = tok.getStr();
+          if (tok.isNum()) {
+            if (nres) *nres=tok.getFloat();
+            res = 1;
+          } else {
+            res = 2;
+          }
+        }
+
+      }
+#ifdef DEBUG_MQTT_EVENT
+      AddLog_P(LOG_LEVEL_INFO, PSTR("Script: token invalid: %s"), selem);
+#endif
+      break;
+    }
+    if (obj.isObject()) {
+      lastobj = obj;
+      continue;
+    }
+    if (!*cp) break;
+  }
+  strlcpy(sres,value.c_str(),slen);
+  return res;
+
+}
+
 //#define DEBUG_MQTT_EVENT
 
 #ifdef SUPPORT_MQTT_EVENT
@@ -6104,64 +6182,14 @@ bool ScriptMqttData(void)
         }
 #else
         JsonParser parser((char*)sData.c_str());
-        const char *cp = event_item.Key.c_str();
-#ifdef DEBUG_MQTT_EVENT
-        AddLog_P(LOG_LEVEL_INFO, PSTR("Script: parsing json key: %s from json: %s"), cp, sData.c_str());
-#endif
         JsonParserObject obj = parser.getRootObject();
-        JsonParserObject lastobj = obj;
-        char selem[32];
-        uint8_t aindex = 0;
-        while (1) {
-          // read next element
-          for (uint32_t sp=0; sp<sizeof(selem)-1; sp++) {
-            if (!*cp || *cp=='.') {
-              selem[sp] = 0;
-              cp++;
-              index++;
-              break;
-            }
-            selem[sp] = *cp++;
-          }
-#ifdef DEBUG_MQTT_EVENT
-          AddLog_P(LOG_LEVEL_INFO, PSTR("Script: cmp current key: %s"), selem);
-#endif
-          // check for array
-          char *sp = strchr(selem,'[');
-          if (sp) {
-            *sp = 0;
-            aindex = atoi(sp+1);
-          }
-          // now check element
-          obj = obj[selem];
-          if (!obj.isValid()) {
-#ifdef DEBUG_MQTT_EVENT
-            AddLog_P(LOG_LEVEL_INFO, PSTR("Script: obj invalid: %s"), selem);
-#endif
-            JsonParserToken tok = lastobj[selem];
-            if (tok.isValid()) {
-              if (tok.isArray()) {
-                JsonParserArray array = JsonParserArray(tok);
-                value = array[aindex].getStr();
-              } else {
-                value = tok.getStr();
-              }
-              json_valid = 1;
-            }
-#ifdef DEBUG_MQTT_EVENT
-            AddLog_P(LOG_LEVEL_INFO, PSTR("Script: token invalid: %s"), selem);
-#endif
-            break;
-          }
-          if (obj.isObject()) {
-            lastobj = obj;
-            continue;
-          }
-          if (!*cp) break;
+        char sres[64];
+        uint32_t res = JsonParsePath(&obj, event_item.Key.c_str(), '.', NULL, sres, sizeof(sres));
+        if (res) {
+          json_valid = 1;
+          value = sres;
         }
 #endif
-      }
-
       if (json_valid) {
         value.trim();
         char sbuffer[128];
