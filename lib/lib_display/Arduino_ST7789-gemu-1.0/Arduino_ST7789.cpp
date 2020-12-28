@@ -338,14 +338,22 @@ void Arduino_ST7789::setRotation(uint8_t m) {
 
      _xstart = _colstart;
     // _ystart = _rowstart;
-     _ystart = 80;
+      if (_width==240 && _height==240) {
+        _ystart = 80;
+      } else {
+        _ystart = 53;
+      }
      break;
    case 1:
      writedata(ST7789_MADCTL_MY | ST7789_MADCTL_MV | ST7789_MADCTL_RGB);
 
      _ystart = _colstart;
     // _xstart = _rowstart;
-     _xstart = 80;
+     if (_width==240 && _height==240) {
+       _xstart = 80;
+     } else {
+       _xstart = 53;
+     }
      break;
   case 2:
      writedata(ST7789_MADCTL_RGB);
