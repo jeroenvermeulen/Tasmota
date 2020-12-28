@@ -6032,9 +6032,9 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 //#define DEBUG_MQTT_EVENT
 
-uint32_t JsonParsePath(JsonParserObject *jobj, char *spath, char delim, float *nres, char *sres, uint32_t slen) {
+uint32_t JsonParsePath(JsonParserObject *jobj, const char *spath, char delim, float *nres, char *sres, uint32_t slen) {
   uint32_t res = 0;
-  char *cp = spath;
+  const char *cp = spath;
 #ifdef DEBUG_MQTT_EVENT
 //  AddLog_P(LOG_LEVEL_INFO, PSTR("Script: parsing json key: %s from json: %s"), cp, jpath);
 #endif
@@ -6154,6 +6154,7 @@ bool ScriptMqttData(void)
       String lkey;
       if (event_item.Key.length() == 0) {   //If did not specify Key
         value = sData;
+        json_valid = 1;
       } else {      //If specified Key, need to parse Key/Value from JSON data
 
 
@@ -6180,6 +6181,7 @@ bool ScriptMqttData(void)
           json_valid = 1;
         }
 #else
+
         JsonParser parser((char*)sData.c_str());
         JsonParserObject obj = parser.getRootObject();
         char sres[64];
@@ -6189,21 +6191,22 @@ bool ScriptMqttData(void)
           value = sres;
         }
 #endif
-      if (json_valid) {
-        value.trim();
-        char sbuffer[128];
+        if (json_valid) {
+          value.trim();
+          char sbuffer[128];
 
-        if (!strncmp(lkey.c_str(), "Epoch", 5)) {
-          uint32_t ep = atoi(value.c_str()) - (uint32_t)EPOCH_OFFSET;
-          snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=%d\n"), event_item.Event.c_str(), ep);
-        } else {
-          snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=\"%s\"\n"), event_item.Event.c_str(), value.c_str());
-        }
+          if (!strncmp(lkey.c_str(), "Epoch", 5)) {
+            uint32_t ep = atoi(value.c_str()) - (uint32_t)EPOCH_OFFSET;
+            snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=%d\n"), event_item.Event.c_str(), ep);
+          } else {
+            snprintf_P(sbuffer, sizeof(sbuffer), PSTR(">%s=\"%s\"\n"), event_item.Event.c_str(), value.c_str());
+          }
 #ifdef DEBUG_MQTT_EVENT
-        AddLog_P(LOG_LEVEL_INFO, PSTR("Script: setting script var %s"), sbuffer);
+          AddLog_P(LOG_LEVEL_INFO, PSTR("Script: setting script var %s"), sbuffer);
 #endif
-        //toLog(sbuffer);
-        execute_script(sbuffer);
+          //toLog(sbuffer);
+          execute_script(sbuffer);
+        }
       }
     }
   }

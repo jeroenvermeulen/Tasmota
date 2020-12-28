@@ -64,10 +64,10 @@ void ST7789_InitDriver()
 
   if (XDSP_12 == Settings.display_model) {
 
-    if (Settings.display_width != ST7789_TFTWIDTH) {
+    if (!Settings.display_width) {
       Settings.display_width = ST7789_TFTWIDTH;
     }
-    if (Settings.display_height != ST7789_TFTHEIGHT) {
+    if (!Settings.display_height) {
       Settings.display_height = ST7789_TFTHEIGHT;
     }
 

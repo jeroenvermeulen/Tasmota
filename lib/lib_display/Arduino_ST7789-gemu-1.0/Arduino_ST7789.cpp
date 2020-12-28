@@ -245,6 +245,23 @@ void Arduino_ST7789::displayInit(const uint8_t *addr) {
       delay(ms);
     }
   }
+
+#if 1
+
+  uint16_t xstart = ST7789_TFTWIDTH - _width;
+  uint16_t ystart = ST7789_TFTHEIGHT - _height;
+  writecommand(ST7789_CASET);
+  writedata(0x00);
+  writedata(xstart);
+  writedata((_width-xstart) >> 8);
+  writedata((_width-xstart) & 0xFF);
+
+  writecommand(ST7789_RASET);
+  writedata(0x00);
+  writedata(ystart);
+  writedata((_height-ystart) >> 8);
+  writedata((_height-ystart) & 0xFF);
+#endif
 }
 
 
@@ -533,8 +550,13 @@ inline void Arduino_ST7789::DC_LOW(void) {
 void Arduino_ST7789::init(uint16_t width, uint16_t height) {
   commonInit(NULL);
 
-  _colstart = ST7789_240x240_XSTART;
-  _rowstart = ST7789_240x240_YSTART;
+  if (width==240 && height==240) {
+    _colstart = ST7789_240x240_XSTART;
+    _rowstart = ST7789_240x240_YSTART;
+  } else {
+    _colstart = 40;
+    _rowstart = 52;
+  }
   _height = height;
   _width = width;
 
