@@ -328,12 +328,64 @@ void Arduino_ST7789::commonInit(const uint8_t *cmdList) {
     displayInit(cmdList);
 }
 
+/*
+
+switch (rotation) {
+    case 0: // Portrait
+#ifdef CGRAM_OFFSET
+      colstart = 52;
+      rowstart = 40;
+#endif
+      writedata(TFT_MAD_COLOR_ORDER);
+
+      _width  = _init_width;
+      _height = _init_height;
+      break;
+
+    case 1: // Landscape (Portrait + 90)
+#ifdef CGRAM_OFFSET
+      colstart = 40;
+      rowstart = 53;
+#endif
+      writedata(TFT_MAD_MX | TFT_MAD_MV | TFT_MAD_COLOR_ORDER);
+
+      _width  = _init_height;
+      _height = _init_width;
+      break;
+
+      case 2: // Inverter portrait
+#ifdef CGRAM_OFFSET
+       colstart = 53;
+       rowstart = 40;
+#endif
+      writedata(TFT_MAD_MX | TFT_MAD_MY | TFT_MAD_COLOR_ORDER);
+
+      _width  = _init_width;
+      _height = _init_height;
+       break;
+    case 3: // Inverted landscape
+#ifdef CGRAM_OFFSET
+      colstart = 40;
+      rowstart = 52;
+#endif
+      writedata(TFT_MAD_MV | TFT_MAD_MY | TFT_MAD_COLOR_ORDER);
+
+      _width  = _init_height;
+      _height = _init_width;
+      break;
+  }
+  */
 void Arduino_ST7789::setRotation(uint8_t m) {
 
+// colstart 40 (xstart)
+// rowstart 52 (ystart)
   writecommand(ST7789_MADCTL);
   rotation = m % 4; // can't be higher than 3
   switch (rotation) {
    case 0:
+      // Inverted portrait
+      // colstart = 53;
+      // rowstart = 40;
      writedata(ST7789_MADCTL_MX | ST7789_MADCTL_MY | ST7789_MADCTL_RGB);
 
      _xstart = _colstart;
@@ -344,7 +396,11 @@ void Arduino_ST7789::setRotation(uint8_t m) {
         _ystart = 53;
       }
      break;
+
    case 1:
+    // Inverted landscape
+    // colstart = 40;
+    // rowstart = 52;
      writedata(ST7789_MADCTL_MY | ST7789_MADCTL_MV | ST7789_MADCTL_RGB);
 
      _ystart = _colstart;
@@ -352,10 +408,14 @@ void Arduino_ST7789::setRotation(uint8_t m) {
      if (_width==240 && _height==240) {
        _xstart = 80;
      } else {
-       _xstart = 53;
+       _xstart = 52;
      }
      break;
+
   case 2:
+      // Portrait
+      // colstart = 52;
+      // rowstart = 40;
      writedata(ST7789_MADCTL_RGB);
 
      _xstart = _colstart;
@@ -363,6 +423,9 @@ void Arduino_ST7789::setRotation(uint8_t m) {
      break;
 
    case 3:
+     // Landscape (Portrait + 90)
+     // colstart = 40;
+     // rowstart = 53;
      writedata(ST7789_MADCTL_MX | ST7789_MADCTL_MV | ST7789_MADCTL_RGB);
 
      _ystart = _colstart;
