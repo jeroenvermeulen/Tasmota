@@ -246,22 +246,6 @@ void Arduino_ST7789::displayInit(const uint8_t *addr) {
     }
   }
 
-/*
-  uint16_t xstart = ST7789_TFTWIDTH - _width;
-  uint16_t ystart = ST7789_TFTHEIGHT - _height;
-
-  writecommand(ST7789_CASET);
-  writedata(0x00);
-  writedata(xstart);
-  writedata((_width-xstart) >> 8);
-  writedata((_width-xstart) & 0xFF);
-
-  writecommand(ST7789_RASET);
-  writedata(0x00);
-  writedata(ystart);
-  writedata((_height-ystart) >> 8);
-  writedata((_height-ystart) & 0xFF);
-*/
 }
 
 
