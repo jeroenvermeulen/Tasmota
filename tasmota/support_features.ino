@@ -712,7 +712,9 @@ void ResponseAppendFeatures(void)
 #if defined(USE_I2C) && defined(USE_TOF10120)
     feature7 |= 0x10000000;  // xsns_84_tof10120
 #endif
-//    feature7 |= 0x20000000;
+#if defined(USE_SPI) && defined(USE_DISPLAY) && defined(USE_DISPLAY_MAX7219)
+    feature7 |= 0x20000000;  // xdsp_15_MAX7219.ino
+#endif
 //    feature7 |= 0x40000000;
 //    feature7 |= 0x80000000;
   }
