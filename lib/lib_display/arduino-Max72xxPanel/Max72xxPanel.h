@@ -22,8 +22,7 @@
 #ifndef Max72xxPanel_h
 #define Max72xxPanel_h
 
-#include "Arduino.h"
-#include <Adafruit_GFX.h>
+#include <renderer.h>
 #include <SPI.h>
 
 #if (ARDUINO >= 100)
@@ -33,7 +32,7 @@
   #include "pins_arduino.h"
 #endif
 
-class Max72xxPanel : public Adafruit_GFX {
+class Max72xxPanel : public Renderer {
 
 public:
 

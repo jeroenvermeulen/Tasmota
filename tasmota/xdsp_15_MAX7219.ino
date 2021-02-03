@@ -23,48 +23,76 @@
 
 #define XDSP_15                    15
 
+#define MAX7219_BLACK   0x0000
+#define MAX7219_WHITE   0xFFFF
+
 // #define MTX_MAX_SCREEN_BUFFER      80
 
-#include <MD_Parola.h>
-#include <MD_MAX72xx.h>
-#include <SPI.h>
+//#include <MD_Parola.h>
+//#include <MD_MAX72xx.h>
+#include <Max72xxPanel.h>
+//#include <SPI.h>
 
 // Define hardware type, size, and output pins:
-#define HARDWARE_TYPE              MD_MAX72XX::FC16_HW
-#define MAX_DEVICES                4
+//#define HARDWARE_TYPE              MD_MAX72XX::FC16_HW
+//#define MAX_DEVICES                4
 
-MD_Parola *myDisplay;
+//MD_Parola *myDisplay;
+Max72xxPanel *Max7219;
 
 void Max7219_InitDriver(void)
 {
-    if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.spi_enabled) {
-      myDisplay = new MD_Parola(HARDWARE_TYPE, Pin(GPIO_MAX7219_CS), MAX_DEVICES);
-    }
-    else if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.soft_spi_enabled) {
-      myDisplay = new MD_Parola(HARDWARE_TYPE, Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), Pin(GPIO_MAX7219_CS), MAX_DEVICES); // @TODO test
-    }
-    else {
-      return;
-    }
+  if (!Settings.display_model) {
+    Settings.display_model = XDSP_15;
+  }
 
-    // Intialize the object:
-    myDisplay->begin();
-    // Set the intensity (brightness) of the display (0-15):
-    myDisplay->setIntensity(0);
-    // Clear the display:
-    myDisplay->displayClear();
+  int numberOfHorizontalDisplays = 4;
+  int numberOfVerticalDisplays = 1;
 
-    #ifdef SHOW_SPLASH
-    myDisplay->setTextAlignment(PA_CENTER);
-    myDisplay->print("MAX");
-    delay(1000);
-    myDisplay->print("7219");
-    delay(1000);
-    myDisplay->displayClear();
-    #endif
+  if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.spi_enabled) {
+      Max7219 = new Max72xxPanel(Pin(GPIO_MAX7219_CS), numberOfHorizontalDisplays, numberOfVerticalDisplays);
+  }
+  else if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.soft_spi_enabled) {
+    //Max7219 = new Max72xxPanel(HARDWARE_TYPE, Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), Pin(GPIO_MAX7219_CS), MAX_DEVICES); // @TODO test
+  }
+  else {
+    return;
+  }
 
-    myDisplay->setTextAlignment(PA_LEFT);
-    AddLog(LOG_LEVEL_INFO, PSTR("DSP: MAX7219"));
+  for(int i = 0; i < 4; i++) {
+    Max7219->setPosition(i, i, 0);  // The i'th display is at <i, 0>
+  }
+
+  // the setRotation function is responsible for the orientation of displays
+  for(int i = 0; i < 8; i++) {
+    Max7219->setRotation(i, 1);     // rotate all displays 90 degrees
+  }
+
+  fg_color = MAX7219_WHITE;
+  bg_color = MAX7219_BLACK;
+
+  renderer = Max7219;
+  renderer->setTextColor(fg_color, bg_color);
+
+  #ifdef SHOW_SPLASH
+  //for (int i=0; i<100; i++) {
+    Max7219->scrollDrawText("MAX7219", 25);
+  //}
+//    renderer->clearDisplay();
+//    renderer->DrawStringAt(10,0,"MAX", MAX7219_WHITE, 0);
+//    renderer->print("MAX");
+//    Max7219->write();
+//    delay(1000);
+//    renderer->clearDisplay();
+//    renderer->DrawStringAt(8,0,"7219", MAX7219_WHITE, 0);
+//    Max7219->write();
+//    delay(1000);
+  renderer->clearDisplay();
+  Max7219->write();
+  #endif
+
+    //myDisplay->setTextAlignment(PA_LEFT);
+  AddLog(LOG_LEVEL_INFO, PSTR("DSP: MAX7219"));
 
 //      MatrixInitMode();
 }
@@ -91,13 +119,14 @@ bool Xdsp15(uint8_t function)
 //        MatrixInit(dsp_init);
         break;
       case FUNC_DISPLAY_EVERY_50_MSECOND:
-//        MatrixRefresh();
+        Max7219->write();
         break;
       case FUNC_DISPLAY_POWER:
 //        MatrixOnOff();
         break;
       case FUNC_DISPLAY_DRAW_STRING:
-//        MatrixDrawStringAt(dsp_x, dsp_y, dsp_str, dsp_color, dsp_flag);
+//        renderer->DrawStringAt(dsp_x, dsp_y, dsp_str, dsp_color, dsp_flag);
+//        Max7219->write();
         break;
     }
   }
