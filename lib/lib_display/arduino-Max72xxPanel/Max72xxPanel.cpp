@@ -1,4 +1,4 @@
-// Source: https://github.com/markruys/arduino-Max72xxPanel
+// Source: https://github.com/Lithimlin/arduino-Max72xxPanel
 /******************************************************************
  A library for controling a set of 8x8 LEDs with a MAX7219 or
  MAX7221 displays.
@@ -15,9 +15,7 @@
  All text above must be included in any redistribution.
  ******************************************************************/
 
-#include <Adafruit_GFX.h>
 #include "Max72xxPanel.h"
-#include <SPI.h>
 
 // The opcodes for the MAX7221 and MAX7219
 #define OP_NOOP         0
@@ -193,4 +191,29 @@ void Max72xxPanel::spiTransfer(byte opcode, byte data) {
 
 	// Latch the data onto the display(s)
 	digitalWrite(SPI_CS, HIGH);
+}
+
+void Max72xxPanel::scrollDrawText(String tape, uint16_t wait, uint8_t letter_width, uint8_t spacer, uint16_t color, uint16_t bg, uint8_t size) {
+
+  letter_width += spacer; // Add the spacer width to the letter width to get the real width
+	int matrix_width = this->Adafruit_GFX::width();
+	int matrix_height = this->Adafruit_GFX::height();
+
+	for(int i = 0; i < letter_width * tape.length() + matrix_width - 1 - spacer; i++) {
+		this->fillScreen(LOW);
+
+		int letter = i / letter_width;
+  	int x = (matrix_width - 1) - i % letter_width;
+  	int y = (matrix_height - 8) / 2; // center the text vertically
+
+  	while(x + letter_width - spacer >= 0 && letter >= 0) {
+  		if(letter < tape.length()) {
+  			this->Adafruit_GFX::drawChar(x, y, tape[letter], color, bg, size);
+  		}
+  		letter--;
+  	  x -= letter_width;
+  	}
+  	this->write();
+  	delay(wait);
+	}
 }

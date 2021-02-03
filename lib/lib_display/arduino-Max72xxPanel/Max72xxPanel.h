@@ -1,4 +1,4 @@
-// Source: https://github.com/markruys/arduino-Max72xxPanel
+// Source: https://github.com/Lithimlin/arduino-Max72xxPanel
 /******************************************************************
  A library for controling a set of 8x8 LEDs with a MAX7219 or
  MAX7221 displays.
@@ -21,6 +21,10 @@
 
 #ifndef Max72xxPanel_h
 #define Max72xxPanel_h
+
+#include "Arduino.h"
+#include <Adafruit_GFX.h>
+#include <SPI.h>
 
 #if (ARDUINO >= 100)
   #include <Arduino.h>
@@ -100,6 +104,19 @@ public:
    */
   void write();
 
+  /*
+   * Writes a tape to the display in scrolling text format
+   * Parameters:
+   * tape the string to be printed
+   * wait the delay between two steps while scrolling
+   * letter_width the width of the letters. Default is 6
+   * spacer the space between two letters. Default is 1
+   * color  the color of the text. Either HIGH or LOW. Default is HIGH
+   * bg the background of the text. Either HIGH or LOW. Default is LOW
+   * size the size of the text. Default is 1
+   */
+  void scrollDrawText(String tape, uint16_t wait = 45, uint8_t letter_width = 6, uint8_t spacer = 1, uint16_t color = HIGH, uint16_t bg = LOW, uint8_t size = 1);
+
 private:
   byte SPI_CS; /* SPI chip selection */
 
@@ -116,6 +133,3 @@ private:
 };
 
 #endif	// Max72xxPanel_h
-
-
-
