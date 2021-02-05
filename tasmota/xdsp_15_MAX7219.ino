@@ -22,23 +22,17 @@
 #ifdef USE_DISPLAY_MAX7219 // This driver eats 17.1 K flash // @TODO verify + make smaller?
 
 #define XDSP_15                    15
+#define SOFTSPI
 
 #define MAX7219_BLACK   0x0000
 #define MAX7219_WHITE   0xFFFF
 
 // #define MTX_MAX_SCREEN_BUFFER      80
 
-//#include <MD_Parola.h>
-//#include <MD_MAX72xx.h>
 #include <Max72xxPanel.h>
-//#include <SPI.h>
 
-// Define hardware type, size, and output pins:
-//#define HARDWARE_TYPE              MD_MAX72XX::FC16_HW
-//#define MAX_DEVICES                4
-
-//MD_Parola *myDisplay;
 Max72xxPanel *Max7219;
+int Max7219_scrollWait = 30;
 
 void Max7219_InitDriver(void)
 {
@@ -49,11 +43,14 @@ void Max7219_InitDriver(void)
   int numberOfHorizontalDisplays = 4;
   int numberOfVerticalDisplays = 1;
 
-  if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.spi_enabled) {
-      Max7219 = new Max72xxPanel(Pin(GPIO_MAX7219_CS), numberOfHorizontalDisplays, numberOfVerticalDisplays);
+#ifdef SOFTSPI
+  if (TasmotaGlobal.soft_spi_enabled && PinUsed(GPIO_MAX7219_CS) && PinUsed(GPIO_SSPI_MOSI) && PinUsed(GPIO_SSPI_SCLK)) {
+    Max7219 = new Max72xxPanel(Pin(GPIO_MAX7219_CS), Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), numberOfHorizontalDisplays, numberOfVerticalDisplays);
   }
-  else if (PinUsed(GPIO_MAX7219_CS) && TasmotaGlobal.soft_spi_enabled) {
-    //Max7219 = new Max72xxPanel(HARDWARE_TYPE, Pin(GPIO_SSPI_MOSI), Pin(GPIO_SSPI_SCLK), Pin(GPIO_MAX7219_CS), MAX_DEVICES); // @TODO test
+  else
+#endif
+  if (TasmotaGlobal.spi_enabled && PinUsed(GPIO_MAX7219_CS)) {
+    Max7219 = new Max72xxPanel(Pin(GPIO_MAX7219_CS), numberOfHorizontalDisplays, numberOfVerticalDisplays);
   }
   else {
     return;
@@ -75,9 +72,7 @@ void Max7219_InitDriver(void)
   renderer->setTextColor(fg_color, bg_color);
 
   #ifdef SHOW_SPLASH
-  //for (int i=0; i<100; i++) {
-    Max7219->scrollDrawText("MAX7219", 25);
-  //}
+  Max7219->scrollDrawText("MAX7219", Max7219_scrollWait);
 //    renderer->clearDisplay();
 //    renderer->DrawStringAt(10,0,"MAX", MAX7219_WHITE, 0);
 //    renderer->print("MAX");
@@ -95,6 +90,37 @@ void Max7219_InitDriver(void)
   AddLog(LOG_LEVEL_INFO, PSTR("DSP: MAX7219"));
 
 //      MatrixInitMode();
+}
+
+void Max7219_Time(void) {
+  char line[20];
+
+//  renderer->clearDisplay();
+  snprintf_P(line, sizeof(line), PSTR("%02d" D_MONTH_DAY_SEPARATOR "%02d" D_YEAR_MONTH_SEPARATOR "%04d   %02d" D_HOUR_MINUTE_SEPARATOR "%02d" D_MINUTE_SECOND_SEPARATOR "%02d"), 
+             RtcTime.day_of_month, RtcTime.month, RtcTime.year, RtcTime.hour, RtcTime.minute, RtcTime.second);  // [01-02-2021  12:34:56]
+  Max7219->scrollDrawText(line, Max7219_scrollWait); // @TODO use async scroll
+}
+
+void Max7219_PrintLog(bool withDateTime) {
+}
+
+void Max7219_Refresh(void)  // Every second
+{
+  if (Settings.display_mode) {  // Mode 0 is User text
+    switch (Settings.display_mode) {
+      case 1:  // Time
+        Max7219_Time();
+        break;
+      case 2:  // Local
+      case 4:  // Mqtt
+        Max7219_PrintLog(false);
+        break;
+      case 3:  // Local + Time
+      case 5:  // Mqtt + Time
+        Max7219_PrintLog(true);
+        break;
+    }
+  }
 }
 
 /*********************************************************************************************\
@@ -115,19 +141,14 @@ bool Xdsp15(uint8_t function)
       case FUNC_DISPLAY_MODEL:
         result = true;
         break;
-      case FUNC_DISPLAY_INIT:
-//        MatrixInit(dsp_init);
-        break;
       case FUNC_DISPLAY_EVERY_50_MSECOND:
         Max7219->write();
         break;
-      case FUNC_DISPLAY_POWER:
-//        MatrixOnOff();
+#ifdef USE_DISPLAY_MODES1TO5
+      case FUNC_DISPLAY_EVERY_SECOND:
+        Max7219_Refresh();
         break;
-      case FUNC_DISPLAY_DRAW_STRING:
-//        renderer->DrawStringAt(dsp_x, dsp_y, dsp_str, dsp_color, dsp_flag);
-//        Max7219->write();
-        break;
+#endif
     }
   }
   return result;
@@ -135,4 +156,4 @@ bool Xdsp15(uint8_t function)
 
 #endif  // USE_DISPLAY_MAX7219
 #endif  // USE_DISPLAY
-#endif  // USE_I2C
+#endif  // USE_SPI
